@@ -2,9 +2,7 @@
 import priors
 import ppa
 import numpy as np
-import matplotlib.pyplot as plt
 from PTMCMCSampler.PTMCMCSampler import PTSampler
-from chainconsumer import ChainConsumer
 import sys
 import datetime
 import os
@@ -115,31 +113,24 @@ Prepare the run
 """
 
 with open("chain_dir.txt",'r') as f:
-    predir = f.read()+"/Signal_Chain/" 
+    predir = f.read().split('\n')[0]+"/Signal_Chain/" 
 
 now = datetime.datetime.now()
 #now.strftime("%d-%m-%H:%M")
 
 name = predir + tag + now.strftime("_%d_%m_%y")+ "/" + tag + f"_{lma_min:.2f}_{lma_max:.2f}_Np{NPSR}_Ns{NSS}_dL{dlnlike:.0f}"
-os.system("mkdir -p "+name)
+#os.system("mkdir -p "+name)
 
-print(name)
-#for info in ppa.info:
-#    words.append(" ".join(info)+"\n")
-#words.append("\n")
-    
-# with open(name+"/info.txt","a") as f:
-#     f.writelines(words)
 
 """
 Run the sampler
 """
 init = get_init()
 
-groups = None
+groups = [np.arange(len(init)) , [ 2*NSS+NPSR , 2*NSS+NPSR + 1 , 2*NSS+NPSR + 2  ]]
 cov = np.diag(np.ones(len(init)))
 sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=False, outDir = name )
-sampler.sample(np.array(init),500000,isave=100)
+sampler.sample(np.array(init),2500000,isave=500)
 
 
 

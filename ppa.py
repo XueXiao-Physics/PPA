@@ -300,8 +300,8 @@ class Array():
             # Axion Signal             #
             #==========================#
             _Phi = self.Get_Sigma( vs*1e-3 , ma , sDTE)
-            _Phi_Full = np.block( _Phi.tolist() ) * switch[0] * Sa
-            _Phi_Auto = np.diag( np.diag(_Phi_Full) ) * switch[1] * Sa
+            _Phi_Full = np.block( _Phi.tolist() ) * switch[0] * Sa**2
+            _Phi_Auto = np.diag( np.diag(_Phi_Full) ) * switch[1] * Sa**2
             Phi = _Phi_Full + _Phi_Auto
 
             F,F_by_SS = self.Get_F( ma )
