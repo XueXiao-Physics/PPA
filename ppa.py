@@ -310,7 +310,7 @@ class Array():
             #==========================#
             # Combine                  #
             #==========================#
-
+            print(nl.eigvals(Phi))
             if ( nl.eigvals(Phi) > 0 ).all() : # Phi has to be positve definite
                 
                 #============================#
@@ -363,6 +363,7 @@ class Array():
 
             else:
                 lnlike_val = - np.inf
+                print("inversion fail")
             
             return lnlike_val
 

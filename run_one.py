@@ -7,7 +7,8 @@ import sys
 import datetime
 import os
 import json
-    
+import mpi4py
+
 PSR_DICT_LIST = ppa.Load_Pulsars()
 PSR_NAME_LIST = list(PSR_DICT_LIST.keys())
 
@@ -67,7 +68,7 @@ def lnlike_sig1( params ):
 l10_EFAC_lp , l10_EFAC_sp = priors.gen_uniform_lnprior(-5,5)
 l10_EQUAD_lp , l10_EQUAD_sp = priors.gen_uniform_lnprior(-8,2)
 sDTE_lp = array.sDTE_LNPRIOR
-v_lp , v_sp = priors.gen_uniform_lnprior(0,10)
+v_lp , v_sp = priors.gen_uniform_lnprior(0.9,1.1)
 l10_ma_lp , l10_ma_sp = priors.gen_uniform_lnprior(lma_min,lma_max)
 l10_Sa_lp , l10_Sa_sp = priors.gen_uniform_lnprior(-8,2)
 
@@ -96,7 +97,6 @@ def lnlike( all_params ):
         lnlike_val =  lnlike_sig0( all_params[1:] ) + dlnlike
     elif nmodel >= 0:
         lnlike_val =  lnlike_sig1( all_params[1:] ) 
-    print(lnlike_val)
     return lnlike_val
 
 nmodel_lp,nmodel_sp = priors.gen_uniform_lnprior(-1,1)
@@ -119,15 +119,17 @@ def get_bestfit( ):
         for S in PSR["DATA"]:
             l10_EFAC.append(spa_results[P][S][0])
             l10_EQUAD.append(spa_results[P][S][1])
-    return l10_EFAC,l10_EQUAD
+    return np.array(l10_EFAC),np.array(l10_EQUAD)
 
 
 def get_init():
     l10_EFAC_bf , l10_EQUAD_bf = get_bestfit( )
-
+    l10_EFAC_bf += np.random.rand(len(l10_EFAC_bf))-0.5
+    l10_EQUAD_bf += np.random.rand(len(l10_EQUAD_bf))-0.5
+    sDTE = np.random.rand(len(ones))*0.2 + 1 -0.1
 
     #init_val = [nmodel_sp()] +[l10_EFAC_sp() for i in range(NSS)] + [l10_EQUAD_sp() for i in range(NSS)] + ones.tolist() + [v_sp()] + [l10_ma_sp()] + [l10_Sa_sp()]
-    init_val = [nmodel_sp()] +l10_EFAC_bf + l10_EQUAD_bf + ones.tolist() + [v_sp()] + [l10_ma_sp()] + [l10_Sa_sp()]
+    init_val = [nmodel_sp()] +l10_EFAC_bf.tolist() + l10_EQUAD_bf.tolist() + sDTE.tolist() + [v_sp()] + [l10_ma_sp()] + [-5]#[l10_Sa_sp()]
     
     return np.array(init_val)
         
@@ -141,7 +143,7 @@ with open("chain_dir.txt",'r') as f:
 now = datetime.datetime.now()
 #now.strftime("%d-%m-%H:%M")
 
-name = predir + tag + now.strftime("_%d_%m_%y")+ "/" + tag + f"_{lma_min:.2f}_{lma_max:.2f}_Np{NPSR}_Ns{NSS}_dL{dlnlike:.0f}"
+name = predir + tag + now.strftime("_%d_%m_%y")+ "/" + tag + f"_{dlnlike:.0f}_{lma_min:.2f}_{lma_max:.2f}_Np{NPSR}_Ns{NSS}"
 #os.system("mkdir -p "+name)
 
 
@@ -149,11 +151,12 @@ name = predir + tag + now.strftime("_%d_%m_%y")+ "/" + tag + f"_{lma_min:.2f}_{l
 Run the sampler
 """
 init = get_init()
+print( lnlike(init))
 
-groups = [np.arange(len(init)) , [ 2*NSS+NPSR , 2*NSS+NPSR + 1 , 2*NSS+NPSR + 2  ]]
+groups = [np.arange(len(init)) , [0, 2*NSS+NPSR+1 , 2*NSS+NPSR + 2 , 2*NSS+NPSR + 3  ]]
 cov = np.diag(np.ones(len(init)))
 sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=False, outDir = name )
-sampler.sample(np.array(init),2500000,isave=500)
+sampler.sample(np.array(init),2500000,thin=100)
 
 
 
