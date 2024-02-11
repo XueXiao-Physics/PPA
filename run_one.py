@@ -1,6 +1,6 @@
 #import axion_ppa
 import priors
-import axion_ppa
+import ppa
 import numpy as np
 import matplotlib.pyplot as plt
 from PTMCMCSampler.PTMCMCSampler import PTSampler
@@ -9,10 +9,10 @@ import sys
 import datetime
 import os
     
-PSR_DICT_LIST = axion_ppa.Load_Pulsars()
+PSR_DICT_LIST = ppa.Load_Pulsars()
 PSR_NAME_LIST = list(PSR_DICT_LIST.keys())
 
-pulsars = [axion_ppa.Pulsar(PSR_DICT_LIST[psrn]) for psrn in PSR_DICT_LIST ]
+pulsars = [ppa.Pulsar(PSR_DICT_LIST[psrn]) for psrn in PSR_DICT_LIST ]
 
 
 """
@@ -29,7 +29,7 @@ dlnlike = float(sys.argv[3])
 Construct the array
 """
 
-array = axion_ppa.Array(pulsars)
+array = ppa.Array(pulsars)
 array.NOBS_TOTAL
 ones = np.ones(array.NPSR)
 zeros = np.zeros(array.NPSR)
@@ -136,7 +136,7 @@ Run the sampler
 """
 init = get_init()
 
-groups=None
+groups = None
 cov = np.diag(np.ones(len(init)))
 sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=False, outDir = name )
 sampler.sample(np.array(init),500000,isave=100)
