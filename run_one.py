@@ -6,6 +6,7 @@ from PTMCMCSampler.PTMCMCSampler import PTSampler
 import sys
 import datetime
 import os
+import json
     
 PSR_DICT_LIST = ppa.Load_Pulsars()
 PSR_NAME_LIST = list(PSR_DICT_LIST.keys())
@@ -92,9 +93,11 @@ Add hyper parameters
 def lnlike( all_params ):
     nmodel = all_params[0]
     if nmodel < 0:
-        return lnlike_sig0( all_params[1:] ) + dlnlike
+        lnlike_val =  lnlike_sig0( all_params[1:] ) + dlnlike
     elif nmodel >= 0:
-        return lnlike_sig1( all_params[1:] ) 
+        lnlike_val =  lnlike_sig1( all_params[1:] ) 
+    print(lnlike_val)
+    return lnlike_val
 
 nmodel_lp,nmodel_sp = priors.gen_uniform_lnprior(-1,1)
 def lnprior( all_params ):
@@ -102,11 +105,31 @@ def lnprior( all_params ):
     return  lnprior_val
 
 
-def get_init( ):
-    init_val = [nmodel_sp()] +[l10_EFAC_sp() for i in range(NSS)] + [l10_EQUAD_sp() for i in range(NSS)] + ones.tolist() + [v_sp()] + [l10_ma_sp()] + [l10_Sa_sp()]
+
+
+def get_bestfit( ):
+    l10_EFAC = []
+    l10_EQUAD = []
+
+    with open("Parfile/spa_results.json",'r') as f:
+        spa_results = json.load(f)
+
+    for P in PSR_DICT_LIST:
+        PSR = PSR_DICT_LIST[P]
+        for S in PSR["DATA"]:
+            l10_EFAC.append(spa_results[P][S][0])
+            l10_EQUAD.append(spa_results[P][S][1])
+    return l10_EFAC,l10_EQUAD
+
+
+def get_init():
+    l10_EFAC_bf , l10_EQUAD_bf = get_bestfit( )
+
+
+    #init_val = [nmodel_sp()] +[l10_EFAC_sp() for i in range(NSS)] + [l10_EQUAD_sp() for i in range(NSS)] + ones.tolist() + [v_sp()] + [l10_ma_sp()] + [l10_Sa_sp()]
+    init_val = [nmodel_sp()] +l10_EFAC_bf + l10_EQUAD_bf + ones.tolist() + [v_sp()] + [l10_ma_sp()] + [l10_Sa_sp()]
+    
     return np.array(init_val)
-
-
         
 """
 Prepare the run
