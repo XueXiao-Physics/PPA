@@ -23,7 +23,7 @@ def get_lc( v , ma ):
 #=====================================================#
 def Load_Pulsars():
 
-    with open("Pulsar_Parfile/par.txt",'r') as f:
+    with open("Parfile/par.txt",'r') as f:
         lines = f.readlines()
         newlines = []
         # remove titles
