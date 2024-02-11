@@ -7,7 +7,6 @@ import sys
 import datetime
 import os
 import json
-import mpi4py
 
 PSR_DICT_LIST = ppa.Load_Pulsars()
 PSR_NAME_LIST = list(PSR_DICT_LIST.keys())

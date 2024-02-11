@@ -310,9 +310,8 @@ class Array():
             #==========================#
             # Combine                  #
             #==========================#
-            print(nl.eigvals(Phi))
-            if ( nl.eigvals(Phi) > 0 ).all() : # Phi has to be positve definite
-                
+            #if ( nl.eigvals(Phi) > 0 ).all() : # Phi has to be positve definite
+            try: 
                 #============================#
                 # For mean value subtraction #
                 #============================#
@@ -329,7 +328,7 @@ class Array():
                     for i in range(self.NSUBSETS_by_SS[P]):
                         DPA_whiten = DPA_by_SS[iSS] / np.sqrt( N_by_SS[iSS] )
                         V_whiten = V_by_SS[iSS] / np.sqrt( N_by_SS[iSS] )
-                        F_whiten = F_by_SS[iSS] / np.sqrt( N_by_SS[iSS][None,:] ) 
+                        F_whiten = F_by_SS[iSS] / np.sqrt( N_by_SS[iSS] )[None,:] 
 
                         FNF_psr +=  F_whiten @ F_whiten.T
                         Fx[P*2 : P*2+2 , iSS] = F_whiten @ DPA_whiten
@@ -361,7 +360,7 @@ class Array():
                 lnlike_val = -0.5*( xNx.sum() - ( Fx.T @ PhiFNF_inv @ Fx).sum()  - x0_mlh @ vCv @ x0_mlh ) - 0.5*Sigma_logdet - CONST
                 #print( x0_mlh)
 
-            else:
+            except:
                 lnlike_val = - np.inf
                 print("inversion fail")
             
