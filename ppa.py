@@ -190,42 +190,40 @@ class Array():
 
     def Get_Sigma( self , v , ma, sDTE ):
         
-        DTE = self.DTE
+        DTE = self.DTE * sDTE
         PSR_POS , DL_MTX = self.Get_Star_Locations( sDTE )
         omega = ma * sc.eV / sc.hbar
         lc = get_lc( v , ma )
 
 
-        Fac2_list =  np.sinc( DL_MTX / lc / np.pi )
-        Fac34_list = np.sinc( DTE/ lc / np.pi )
+        sincpq_all =  np.sinc( DL_MTX / lc / np.pi )
+        sincp_all = np.sinc( DTE/ lc / np.pi )
 
-        cos_omega_Lp_list = np.cos( omega * DTE * KPC_TO_S )
-        sin_omega_Lp_list = np.sin( omega * DTE * KPC_TO_S )
+        cp_all = np.cos( omega * DTE * KPC_TO_S )
+        sp_all = np.sin( omega * DTE * KPC_TO_S )
 
-        cos_omega_Lp_Lq_list = cos_omega_Lp_list[:,None]*cos_omega_Lp_list[None,:] + sin_omega_Lp_list[:,None]*sin_omega_Lp_list[None,:]
-        sin_omega_Lp_Lq_list = sin_omega_Lp_list[:,None]*cos_omega_Lp_list[None,:] - cos_omega_Lp_list[:,None]*sin_omega_Lp_list[None,:]
+        cpq_all = cp_all[:,None]*cp_all[None,:] + sp_all[:,None]*sp_all[None,:]
+        spq_all = sp_all[:,None]*cp_all[None,:] - cp_all[:,None]*sp_all[None,:]
 
         Phi_blocks = np.zeros((self.NPSR,self.NPSR),dtype=np.ndarray)
 
         for p in range(self.NPSR):
             for q in range(self.NPSR):
 
-                #Fac1 = rhoDM_e
-                Fac1 = 1.
-                Fac2 = Fac2_list[p,q]
-                Fac3 = Fac34_list[p]
-                Fac4 = Fac34_list[q]
+                sincpq = sincpq_all[p,q]
+                sincp = sincp_all[p]
+                sincq = sincp_all[q]
 
-                cpq = cos_omega_Lp_Lq_list[p,q]
-                spq = sin_omega_Lp_Lq_list[p,q]
-                cp = cos_omega_Lp_list[p]
-                sp = sin_omega_Lp_list[p]
-                cq = cos_omega_Lp_list[q]
-                sq = sin_omega_Lp_list[q]
+                cpq = cpq_all[p,q]
+                spq = spq_all[p,q]
+                cp = cp_all[p]
+                sp = sp_all[p]
+                cq = cp_all[q]
+                sq = sp_all[q]
                 
-                Phi_ccss = Fac1 + Fac2*cpq - Fac3*cp - Fac4*cq
-                Phi_sc =  Fac2*spq - Fac3*sp + Fac4*sq
-                Phi_cs = -Fac2*spq + Fac3*sp - Fac4*sq
+                Phi_ccss = 1 + sincpq*cpq - sincp*cp - sincq*cq
+                Phi_sc =  sincpq*spq - sincp*sp + sincq*sq
+                Phi_cs = -sincpq*spq + sincp*sp - sincq*sq
 
                 Phi_pq = np.array([[Phi_ccss,Phi_cs],[Phi_sc,Phi_ccss]]) 
 
