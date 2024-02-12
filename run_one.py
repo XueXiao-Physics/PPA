@@ -155,7 +155,7 @@ print( lnlike(init))
 groups = [np.arange(len(init)) , [0, 2*NSS+NPSR+1 , 2*NSS+NPSR + 2 , 2*NSS+NPSR + 3  ]]
 cov = np.diag(np.ones(len(init)))
 sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=False, outDir = name )
-sampler.sample(np.array(init),2500000,thin=100)
+sampler.sample(np.array(init),5000000,thin=100)
 
 
 

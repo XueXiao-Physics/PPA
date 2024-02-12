@@ -298,9 +298,9 @@ class Array():
             # Axion Signal             #
             #==========================#
             _Phi = self.Get_Sigma( vs*1e-3 , ma , sDTE)
-            _Phi_Full = np.block( _Phi.tolist() ) * switch[0] * Sa**2
-            _Phi_Auto = np.diag( np.diag(_Phi_Full) ) * switch[1] * Sa**2
-            Phi = _Phi_Full + _Phi_Auto
+            _Phi_Full = np.block( _Phi.tolist() )  
+            _Phi_Auto = np.diag( np.diag(_Phi_Full) )
+            Phi = (_Phi_Full*switch[0] + _Phi_Auto*switch[1])*Sa**2
 
             F,F_by_SS = self.Get_F( ma )
             Phi_sgn , Phi_logdet = nl.slogdet( Phi )
@@ -337,7 +337,7 @@ class Array():
                         iSS += 1
                     FNF[ P*2 : P*2+2 , P*2 : P*2+2 ] = FNF_psr
 
-                Phi_inv = sl.inv( Phi )
+                Phi_inv = sl.inv( Phi  )
                 PhiFNF = Phi_inv + FNF
                 PhiFNF_inv = sl.inv( PhiFNF )
                 PhiFNF_sgn , PhiFNF_logdet = nl.slogdet( PhiFNF )
@@ -360,7 +360,7 @@ class Array():
 
             except:
                 lnlike_val = - np.inf
-                print("inversion fail")
+                print("%.1f"%l10_ma,"inversion fail")
             
             return lnlike_val
 
