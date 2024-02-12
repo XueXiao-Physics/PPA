@@ -4,6 +4,8 @@ import numpy.linalg as nl
 import priors
 import glob
 import scipy.linalg as sl
+import mpmath
+mpmath.mp.dps=30
 #import jax.numpy.linalg as jnl
 #import jax
 #jax.config.update('jax_platform_name', 'cpu')
@@ -223,7 +225,7 @@ class Array():
                 
                 Phi_ccss = 1 + sincpq*cpq - sincp*cp - sincq*cq
                 Phi_sc =  sincpq*spq - sincp*sp + sincq*sq
-                Phi_cs = -sincpq*spq + sincp*sp - sincq*sq
+                Phi_cs = -Phi_sc
 
                 Phi_pq = np.array([[Phi_ccss,Phi_cs],[Phi_sc,Phi_ccss]]) 
 
@@ -302,13 +304,13 @@ class Array():
             _Phi_Auto = np.diag( np.diag(_Phi_Full) )
             Phi = (_Phi_Full*switch[0] + _Phi_Auto*switch[1])*Sa**2
 
-            F,F_by_SS = self.Get_F( ma )
-            Phi_sgn , Phi_logdet = nl.slogdet( Phi )
 
+            F,F_by_SS = self.Get_F( ma )
             #==========================#
             # Combine                  #
             #==========================#
             #if ( nl.eigvals(Phi) > 0 ).all() : # Phi has to be positve definite
+            #if 1>0:
             try: 
                 #============================#
                 # For mean value subtraction #
@@ -337,10 +339,30 @@ class Array():
                         iSS += 1
                     FNF[ P*2 : P*2+2 , P*2 : P*2+2 ] = FNF_psr
 
+                #============================#
+                # Matrix Inversion           #
+                #============================#
+
+                #Phi1 = mpmath.matrix(Phi)
+                #Phi_inv = mpmath.inverse(Phi1)
+                #Phi_inv = np.array(Phi_inv.tolist(),dtype=np.float64)
+                #Phi_logdet = np.float64(mpmath.log(mpmath.det(Phi1)))
+
+                Phi_sgn , Phi_logdet = nl.slogdet( Phi )
                 Phi_inv = sl.inv( Phi  )
+                Phi_inv_sgn , Phi_inv_logdet = nl.slogdet( Phi_inv )
+                if Phi_sgn != Phi_inv_sgn or not np.allclose( Phi_inv_logdet + Phi_logdet , 0 , atol = 1e-1 ):
+                    Phi_logdet = -np.inf
+                    print("%.3f"%l10_ma,"wrong Phi inversion")
+
+
                 PhiFNF = Phi_inv + FNF
-                PhiFNF_inv = sl.inv( PhiFNF )
                 PhiFNF_sgn , PhiFNF_logdet = nl.slogdet( PhiFNF )
+                PhiFNF_inv = sl.inv( PhiFNF )
+                PhiFNF_inv_sgn , PhiFNF_inv_logdet = nl.slogdet( PhiFNF_inv )
+                if PhiFNF_sgn != PhiFNF_inv_sgn or not np.allclose( PhiFNF_inv_logdet + PhiFNF_logdet , 0 , atol = 1e-1 ):
+                    PhiFNF_logdet = -np.inf
+                    print("%.3f"%l10_ma,"wrong PhiFNF inversion")
 
                 vNx = np.diag(vNx)
                 vNv = np.diag(vNv)
@@ -356,11 +378,11 @@ class Array():
                 
                 Sigma_logdet = Phi_logdet + PhiFNF_logdet + N_logdet
                 lnlike_val = -0.5*( xNx.sum() - ( Fx.T @ PhiFNF_inv @ Fx).sum()  - x0_mlh @ vCv @ x0_mlh ) - 0.5*Sigma_logdet - CONST
-                #print( x0_mlh)
-
+                #print( x0_mlh )
+                #print("%.1f"%l10_ma,"%.1e"%lnlike_val)
             except:
                 lnlike_val = - np.inf
-                print("%.1f"%l10_ma,"inversion fail")
+                print("%.3f"%l10_ma,"inversion fail")
             
             return lnlike_val
 

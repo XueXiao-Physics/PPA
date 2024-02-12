@@ -7,6 +7,7 @@ import sys
 import datetime
 import os
 import json
+import mpi4py
 
 PSR_DICT_LIST = ppa.Load_Pulsars()
 PSR_NAME_LIST = list(PSR_DICT_LIST.keys())
@@ -64,7 +65,7 @@ def lnlike_sig1( params ):
 
 
 
-l10_EFAC_lp , l10_EFAC_sp = priors.gen_uniform_lnprior(-5,5)
+l10_EFAC_lp , l10_EFAC_sp = priors.gen_uniform_lnprior(-1,4)
 l10_EQUAD_lp , l10_EQUAD_sp = priors.gen_uniform_lnprior(-8,2)
 sDTE_lp = array.sDTE_LNPRIOR
 v_lp , v_sp = priors.gen_uniform_lnprior(0.9,1.1)
@@ -125,10 +126,10 @@ def get_init():
     l10_EFAC_bf , l10_EQUAD_bf = get_bestfit( )
     l10_EFAC_bf += np.random.rand(len(l10_EFAC_bf))-0.5
     l10_EQUAD_bf += np.random.rand(len(l10_EQUAD_bf))-0.5
-    sDTE = np.random.rand(len(ones))*0.2 + 1 -0.1
+    sDTE = np.random.rand(len(ones))*0.1 + 1 -0.05
 
-    #init_val = [nmodel_sp()] +[l10_EFAC_sp() for i in range(NSS)] + [l10_EQUAD_sp() for i in range(NSS)] + ones.tolist() + [v_sp()] + [l10_ma_sp()] + [l10_Sa_sp()]
-    init_val = [nmodel_sp()] +l10_EFAC_bf.tolist() + l10_EQUAD_bf.tolist() + sDTE.tolist() + [v_sp()] + [l10_ma_sp()] + [-5]#[l10_Sa_sp()]
+    #init_val = [nmodel_sp()] +[l10_EFAC_sp() for i in range(NSS)] + [l10_EQUAD_sp() for i in range(NSS)] + sDTE.tolist() + [v_sp()] + [l10_ma_sp()] + [l10_Sa_sp()]
+    init_val = [nmodel_sp()] + l10_EFAC_bf.tolist() + l10_EQUAD_bf.tolist() + sDTE.tolist() + [v_sp()] + [l10_ma_sp()] + [l10_Sa_sp()]
     
     return np.array(init_val)
         
