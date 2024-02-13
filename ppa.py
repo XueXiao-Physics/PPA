@@ -83,7 +83,7 @@ class Pulsar():
         self.PSR_NAME = PSR_DICT["PSR"]
         #self.import_psr()
 
-        self.DTE,self.DTE_LNPRIOR = priors.get_DTE( PSR_DICT["DTE_DM"] , PSR_DICT["PX"] , PSR_DICT["PX_ERR"] )
+        self.DTE0,self.DTE_LNPRIOR = priors.get_DTE( PSR_DICT["DTE_DM"] , PSR_DICT["PX"] , PSR_DICT["PX_ERR"] )
         self.PSR_LOC = priors.get_psr_loc( PSR_DICT["RAJ"] , PSR_DICT["DECJ"] )
 
         self.SUBSETS = list( PSR_DICT["DATA"].keys() )
@@ -153,7 +153,7 @@ class Array():
         self.NOBS_TOTAL = np.sum([ np.sum(NOBS) for NOBS in self.NOBS ])
         
 
-        self.DTE = np.array([psr.DTE for psr in Pulsars])
+        self.DTE0 = np.array([psr.DTE0 for psr in Pulsars])
         self.sDTE_LNPRIOR = [psr.DTE_LNPRIOR for psr in Pulsars]
         self.PSR_LOC = np.array( [psr.PSR_LOC for psr in Pulsars] )
 
@@ -163,6 +163,7 @@ class Array():
 
 
         self.NSUBSETS_by_SS = [ len(SUBSETS) for SUBSETS in self.SUBSETS]
+        self.NSUBSETS_TOTAL = np.sum(self.NSUBSETS_by_SS)
 
 
 
@@ -171,7 +172,7 @@ class Array():
 
     def Get_Star_Locations( self , sDTE ):
 
-        PSR_POS = self.PSR_LOC * sDTE[:,None] * self.DTE[:,None]
+        PSR_POS = self.PSR_LOC * sDTE[:,None] * self.DTE0[:,None]
         DL_MTX = np.zeros((self.NPSR,self.NPSR))
 
         for p in range(self.NPSR):
@@ -192,7 +193,7 @@ class Array():
 
     def Get_Sigma( self , v , ma, sDTE ):
         
-        DTE = self.DTE * sDTE
+        DTE = self.DTE0 * sDTE
         PSR_POS , DL_MTX = self.Get_Star_Locations( sDTE )
         omega = ma * sc.eV / sc.hbar
         lc = get_lc( v , ma )
@@ -265,7 +266,6 @@ class Array():
         #type of signal
 
         
-        NSUBSETS = np.sum( self.NSUBSETS_by_SS )
 
         DPA_ERR_by_SS = np.array( [ x for xs in self.DPA_ERR for x in xs] , dtype="object" )
         DPA_by_SS = np.array( [ x for xs in self.DPA for x in xs] , dtype="object" )
@@ -315,11 +315,11 @@ class Array():
                 #============================#
                 # For mean value subtraction #
                 #============================#
-                Fx = np.zeros( ( self.NPSR*2,NSUBSETS ) )
-                Fv = np.zeros( ( self.NPSR*2,NSUBSETS ) )
-                vNx = np.zeros( NSUBSETS )
-                vNv = np.zeros( NSUBSETS )
-                xNx = np.zeros( NSUBSETS ) 
+                Fx = np.zeros( ( self.NPSR*2,self.NSUBSETS_TOTAL ) )
+                Fv = np.zeros( ( self.NPSR*2,self.NSUBSETS_TOTAL ) )
+                vNx = np.zeros( self.NSUBSETS_TOTAL )
+                vNv = np.zeros( self.NSUBSETS_TOTAL )
+                xNx = np.zeros( self.NSUBSETS_TOTAL ) 
                 FNF = np.zeros( ( self.NPSR*2 , self.NPSR*2 ) )
 
                 iSS = 0
@@ -399,7 +399,4 @@ class Array():
 
 
         return lnlikelihood
-
-
-
 
