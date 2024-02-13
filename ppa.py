@@ -19,6 +19,10 @@ def get_lc( v , ma ):
     lc = sc.hbar * sc.c / sc.eV / v / sc.parsec*1e-3 / ma
     return lc
 
+def svd_inv( M ):
+    u,s,v = nl.svd( M )
+    return u @ np.diag(s) @ v 
+
 
 #=====================================================#
 #    Load the information of all available pulsars    #
@@ -356,7 +360,8 @@ class Array():
                 """
 
                 Phi_sgn , Phi_logdet = nl.slogdet( Phi )
-                Phi_inv = sl.inv( Phi  )
+                #Phi_inv = sl.inv( Phi  )
+                Phi_inv = svd_inv(Phi)
                 Phi_inv_sgn , Phi_inv_logdet = nl.slogdet( Phi_inv )
                 if Phi_sgn != Phi_inv_sgn or not np.allclose( Phi_inv_logdet + Phi_logdet , 0 , atol = 1e-1 ):
                    Phi_logdet = -np.inf
@@ -365,7 +370,8 @@ class Array():
 
                 PhiFNF = Phi_inv + FNF
                 PhiFNF_sgn , PhiFNF_logdet = nl.slogdet( PhiFNF )
-                PhiFNF_inv = sl.inv( PhiFNF )
+                #PhiFNF_inv = sl.inv( PhiFNF )
+                PhiFNF_inv = svd_inv(PhiFNF)
                 PhiFNF_inv_sgn , PhiFNF_inv_logdet = nl.slogdet( PhiFNF_inv )
                 if PhiFNF_sgn != PhiFNF_inv_sgn or not np.allclose( PhiFNF_inv_logdet + PhiFNF_logdet , 0 , atol = 1e-1 ):
                     PhiFNF_logdet = -np.inf
