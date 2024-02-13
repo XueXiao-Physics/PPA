@@ -360,7 +360,7 @@ class Array():
                 """
 
                 #Phi_sgn , Phi_logdet = nl.slogdet( Phi )
-                Phi_inv,Phi_inv_logdet = svd_inv(Phi)
+                Phi_inv,Phi_logdet = svd_inv(Phi)
 
                 #Phi_inv = sl.inv( Phi  )
                 #Phi_inv_sgn , Phi_inv_logdet = nl.slogdet( Phi_inv )
@@ -370,7 +370,7 @@ class Array():
                 
 
                 PhiFNF = Phi_inv + FNF
-                PhiFNF_inv,PhiFNF_inv_logdet = svd_inv(PhiFNF)
+                PhiFNF_inv,PhiFNF_logdet = svd_inv(PhiFNF)
                 #PhiFNF_sgn , PhiFNF_logdet = nl.slogdet( PhiFNF )
                 #PhiFNF_inv = sl.inv( PhiFNF )
                 #PhiFNF_inv = svd_inv(PhiFNF)
