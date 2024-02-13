@@ -244,7 +244,7 @@ class Array():
             for S in range( self.NSUBSETS_by_SS[P] ):
 
                 NOBS = self.NOBS[P][S]
-                t = self.TOA[P][S]
+                t = self.TOA[P][S] * sc.day
                 Fcos = np.cos(omega * t)
                 Fsin = np.sin(omega * t)
                 Fss = np.vstack([Fcos,Fsin])
@@ -342,19 +342,26 @@ class Array():
                 #============================#
                 # Matrix Inversion           #
                 #============================#
+                """
+                Phi1 = mpmath.matrix(Phi)
+                Phi_inv = mpmath.inverse(Phi1)
+                Phi_inv = np.array(Phi_inv.tolist(),dtype=np.float64)
+                Phi_logdet = np.float64(mpmath.log(mpmath.det(Phi1)))
 
-                #Phi1 = mpmath.matrix(Phi)
-                #Phi_inv = mpmath.inverse(Phi1)
-                #Phi_inv = np.array(Phi_inv.tolist(),dtype=np.float64)
-                #Phi_logdet = np.float64(mpmath.log(mpmath.det(Phi1)))
+                PhiFNF = Phi_inv + FNF
+                PhiFNF1 = mpmath.matrix(PhiFNF)
+                PhiFNF_inv = mpmath.inverse(PhiFNF1)
+                PhiFNF_inv = np.array(PhiFNF_inv.tolist(),dtype=np.float64)
+                PhiFNF_logdet = np.float64(mpmath.log(mpmath.det(PhiFNF1)))
+                """
 
                 Phi_sgn , Phi_logdet = nl.slogdet( Phi )
                 Phi_inv = sl.inv( Phi  )
                 Phi_inv_sgn , Phi_inv_logdet = nl.slogdet( Phi_inv )
                 if Phi_sgn != Phi_inv_sgn or not np.allclose( Phi_inv_logdet + Phi_logdet , 0 , atol = 1e-1 ):
-                    Phi_logdet = -np.inf
-                    print("%.3f"%l10_ma,"wrong Phi inversion")
-
+                   Phi_logdet = -np.inf
+                   print("%.3f"%l10_ma,"wrong Phi inversion")
+                
 
                 PhiFNF = Phi_inv + FNF
                 PhiFNF_sgn , PhiFNF_logdet = nl.slogdet( PhiFNF )
@@ -363,6 +370,9 @@ class Array():
                 if PhiFNF_sgn != PhiFNF_inv_sgn or not np.allclose( PhiFNF_inv_logdet + PhiFNF_logdet , 0 , atol = 1e-1 ):
                     PhiFNF_logdet = -np.inf
                     print("%.3f"%l10_ma,"wrong PhiFNF inversion")
+
+
+
 
                 vNx = np.diag(vNx)
                 vNv = np.diag(vNv)

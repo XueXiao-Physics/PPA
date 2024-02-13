@@ -9,28 +9,26 @@ import os
 import json
 import mpi4py
 
-PSR_DICT_LIST = ppa.Load_Pulsars()
-PSR_NAME_LIST = list(PSR_DICT_LIST.keys())
+PSR_DICT = ppa.Load_Pulsars()
+pulsars = [ppa.Pulsar(PSR_DICT[psrn]) for psrn in PSR_DICT ]
+#pulsars.pop(18)
 
-pulsars = [ppa.Pulsar(PSR_DICT_LIST[psrn]) for psrn in PSR_DICT_LIST ]
-
-
+PSR_NAME_LIST = [psr.PSR_NAME for psr in pulsars]
 """
 Get the prior range
 """
 
-tag = "AF" ; sig0 = "Auto" ; sig1 = "Full"
+sig0 = "Auto" ; sig1 = "Full"
 lma_min = float(sys.argv[1])
 lma_max = float(sys.argv[2])
 dlnlike = float(sys.argv[3])
-
+tag = sys.argv[4]
 
 """
 Construct the array
 """
 
 array = ppa.Array(pulsars)
-array.NOBS_TOTAL
 ones = np.ones(array.NPSR)
 zeros = np.zeros(array.NPSR)
 lnlike_sig1_raw = array.Generate_Lnlike_Function( method=sig1 )
@@ -40,6 +38,7 @@ lnlike_sig0_raw = array.Generate_Lnlike_Function( method=sig0 )
 NSS = np.sum( array.NSUBSETS_by_SS )
 NPSR = array.NPSR
 
+tag = tag+f"_{dlnlike:.0f}_Np{NPSR}_Ns{NSS}"
 
 """
 Define likelihood and prior
@@ -114,8 +113,8 @@ def get_bestfit( ):
     with open("Parfile/spa_results.json",'r') as f:
         spa_results = json.load(f)
 
-    for P in PSR_DICT_LIST:
-        PSR = PSR_DICT_LIST[P]
+    for P in array.PSR_NAMES:
+        PSR = PSR_DICT[P]
         for S in PSR["DATA"]:
             l10_EFAC.append(spa_results[P][S][0])
             l10_EQUAD.append(spa_results[P][S][1])
@@ -143,7 +142,9 @@ with open("chain_dir.txt",'r') as f:
 now = datetime.datetime.now()
 #now.strftime("%d-%m-%H:%M")
 
-name = predir + tag + now.strftime("_%d_%m_%y")+ "/" + tag + f"_{dlnlike:.0f}_{lma_min:.2f}_{lma_max:.2f}_Np{NPSR}_Ns{NSS}"
+#name = predir + tag + now.strftime("_T_%d_%m_%y")+ "/" + tag + f"_{dlnlike:.0f}_{lma_min:.2f}_{lma_max:.2f}_Np{NPSR}_Ns{NSS}"
+name = predir + tag + "/" + tag + f"_{lma_min:.2f}_{lma_max:.2f}"
+
 #os.system("mkdir -p "+name)
 
 
@@ -155,7 +156,7 @@ print( lnlike(init))
 
 groups = [np.arange(len(init)) , [0, 2*NSS+NPSR+1 , 2*NSS+NPSR + 2 , 2*NSS+NPSR + 3  ]]
 cov = np.diag(np.ones(len(init)))
-sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=False, outDir = name )
+sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=True, outDir = name )
 sampler.sample(np.array(init),5000000,thin=100)
 
 
