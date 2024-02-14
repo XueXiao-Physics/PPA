@@ -20,9 +20,24 @@ def get_lc( v , ma ):
     return lc
 
 def svd_inv( M ):
+    
     u,s,v = nl.svd( M , hermitian=True )
-    return u @ np.diag(1/np.abs(s)) @ v , np.sum(np.log(np.abs(s)))
+    if (s<0).any() :#or s.max()/s.min()>1e15 :
+        return u @ np.diag(1/s) @ v , np.inf
+    else:
+        return u @ np.diag(1/s) @ v , np.sum(np.log(s))
 
+
+def svd_inv_mpmath(M):
+    M1 = mpmath.matrix(M)
+    usv = mpmath.svd_r(M1)
+    s = np.array(usv[1].tolist(),dtype=np.float64)[:,0]
+    u = np.array(usv[0].tolist(),dtype=np.float64)
+    v = np.array(usv[2].tolist(),dtype=np.float64)
+
+    logdet = np.sum(np.log(  s  ))
+    Minv = u@np.diag(1/s)@v
+    return Minv , logdet
 
 #=====================================================#
 #    Load the information of all available pulsars    #
@@ -98,7 +113,7 @@ class Pulsar():
         for SS in self.SUBSETS:
             TOA , DPA , DPA_ERR = np.loadtxt( PSR_DICT["DATA"][SS] )
             NOBS = len(TOA)
-            self.TOA.append(TOA)
+            self.TOA.append(TOA-TREF)
             self.DPA.append(DPA)
             self.DPA_ERR.append(DPA_ERR)
             self.NOBS.append(NOBS)
@@ -346,7 +361,7 @@ class Array():
                 #============================#
                 # Matrix Inversion           #
                 #============================#
-                """
+                                
                 Phi1 = mpmath.matrix(Phi)
                 Phi_inv = mpmath.inverse(Phi1)
                 Phi_inv = np.array(Phi_inv.tolist(),dtype=np.float64)
@@ -357,13 +372,11 @@ class Array():
                 PhiFNF_inv = mpmath.inverse(PhiFNF1)
                 PhiFNF_inv = np.array(PhiFNF_inv.tolist(),dtype=np.float64)
                 PhiFNF_logdet = np.float64(mpmath.log(mpmath.det(PhiFNF1)))
+                
                 """
-
-                #Phi_sgn , Phi_logdet = nl.slogdet( Phi )
                 Phi_inv,Phi_logdet = svd_inv(Phi)
-
                 #Phi_inv = sl.inv( Phi  )
-                #Phi_inv_sgn , Phi_inv_logdet = nl.slogdet( Phi_inv )
+                #Phi_inv_sgn , Phi_logdet = nl.slogdet( Phi_inv )
                 #if Phi_sgn != Phi_inv_sgn or not np.allclose( Phi_inv_logdet + Phi_logdet , 0 , atol = 1e-1 ):
                 #   Phi_logdet = -np.inf
                 #   print("%.3f"%l10_ma,"wrong Phi inversion")
@@ -371,15 +384,15 @@ class Array():
 
                 PhiFNF = Phi_inv + FNF
                 PhiFNF_inv,PhiFNF_logdet = svd_inv(PhiFNF)
-                #PhiFNF_sgn , PhiFNF_logdet = nl.slogdet( PhiFNF )
+                PhiFNF_sgn , PhiFNF_logdet = nl.slogdet( PhiFNF )
                 #PhiFNF_inv = sl.inv( PhiFNF )
-                #PhiFNF_inv = svd_inv(PhiFNF)
-                #PhiFNF_inv_sgn , PhiFNF_inv_logdet = nl.slogdet( PhiFNF_inv )
+                #PhiFNF_inv_sgn , PhiFNF_logdet = nl.slogdet( PhiFNF_inv )
                 #if PhiFNF_sgn != PhiFNF_inv_sgn or not np.allclose( PhiFNF_inv_logdet + PhiFNF_logdet , 0 , atol = 1e-1 ):
                 #    PhiFNF_logdet = -np.inf
                 #    print("%.3f"%l10_ma,"wrong PhiFNF inversion")
 
-
+                """
+                
 
 
                 vNx = np.diag(vNx)
@@ -388,7 +401,8 @@ class Array():
                 vCx = vNx - Fv.T @ PhiFNF_inv @ Fx
                 vCv = vNv - Fv.T @ PhiFNF_inv @ Fv
                 vCv_inv = sl.inv(vCv)
-                x0_mlh = np.sum( vCv_inv @ vCx ,axis=1)
+                #vCv_inv ,vCv_logdet = svd_inv(vCv)
+                x0_mlh = np.sum( vCv_inv @ vCx , axis=1)
                 #print(x0_mlh)
                 #============================#
                 # The end of Subtraction     #
@@ -396,11 +410,12 @@ class Array():
                 
                 Sigma_logdet = Phi_logdet + PhiFNF_logdet + N_logdet
                 lnlike_val = -0.5*( xNx.sum() - ( Fx.T @ PhiFNF_inv @ Fx).sum()  - x0_mlh @ vCv @ x0_mlh ) - 0.5*Sigma_logdet - CONST
-                #print( x0_mlh )
+
                 #print("%.1f"%l10_ma,"%.1e"%lnlike_val)
-            except:
+                #print(Phi_logdet , PhiFNF_logdet,lnlike_val)
+            except Exception as error:
                 lnlike_val = - np.inf
-                print("%.3f"%l10_ma,"inversion fail")
+                print("%.3f"%l10_ma,"inversion fail",error)
             
             return lnlike_val
 
