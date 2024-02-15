@@ -18,7 +18,6 @@ PSR_NAME_LIST = [psr.PSR_NAME for psr in pulsars]
 Get the prior range
 """
 
-sig0 = "Auto" ; sig1 = "Full"
 lma_min = float(sys.argv[1])
 lma_max = float(sys.argv[2])
 dlnlike = float(sys.argv[3])
@@ -31,9 +30,8 @@ Construct the array
 array = ppa.Array(pulsars)
 ones = np.ones(array.NPSR)
 zeros = np.zeros(array.NPSR)
-lnlike_sig1_raw = array.Generate_Lnlike_Function( method=sig1 )
-lnlike_sig0_raw = array.Generate_Lnlike_Function( method=sig0 )
-
+lnlike_sig0_raw = array.Generate_Lnlike_Function( method="Auto" )
+lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Full" )
 
 NSS = np.sum( array.NSUBSETS_by_SS )
 NPSR = array.NPSR
@@ -93,14 +91,20 @@ Add hyper parameters
 def lnlike( all_params ):
     nmodel = all_params[0]
     if nmodel < 0:
-        lnlike_val =  lnlike_sig0( all_params[1:] ) + dlnlike
+        lnlike_val =  lnlike_sig0( all_params[1:] )
     elif nmodel >= 0:
         lnlike_val =  lnlike_sig1( all_params[1:] ) 
     return lnlike_val
 
 nmodel_lp,nmodel_sp = priors.gen_uniform_lnprior(-1,1)
 def lnprior( all_params ):
+    
+    nmodel = all_params[0] 
     lnprior_val = lnprior_nonmodel( all_params[1:] ) + nmodel_lp(all_params[0])
+    if nmodel < 0:
+        lnprior_val += dlnlike
+    elif nmodel >= 0:
+        pass
     return  lnprior_val
 
 

@@ -293,10 +293,6 @@ class Array():
 
         CONST =  0.5 * self.NOBS_TOTAL * np.log( 2*np.pi )
 
-        if method == "Full":
-            switch = [1,0]
-        elif method == "Auto":
-            switch = [0,1]
         
         def lnlikelihood( l10_EFAC , l10_EQUAD , sDTE , vs , l10_ma , l10_Sa ):
             #==========================#
@@ -321,8 +317,13 @@ class Array():
             _Phi = self.Get_Sigma( vs*1e-3 , ma , sDTE)
             _Phi_Full = np.block( _Phi.tolist() )  
             _Phi_Auto = np.diag( np.diag(_Phi_Full) )
-            Phi = (_Phi_Full*switch[0] + _Phi_Auto*switch[1])*Sa**2
 
+            if method == "Full":
+                Phi = _Phi_Full * Sa**2
+            elif method == "Auto":
+                Phi = _Phi_Auto * Sa**2
+            else:
+                raise
 
             F,F_by_SS = self.Get_F( ma )
             #==========================#
@@ -361,7 +362,7 @@ class Array():
                 #============================#
                 # Matrix Inversion           #
                 #============================#
-                                
+                """                
                 Phi1 = mpmath.matrix(Phi)
                 Phi_inv = mpmath.inverse(Phi1)
                 Phi_inv = np.array(Phi_inv.tolist(),dtype=np.float64)
@@ -391,7 +392,7 @@ class Array():
                 #    PhiFNF_logdet = -np.inf
                 #    print("%.3f"%l10_ma,"wrong PhiFNF inversion")
 
-                """
+                
                 
 
 
