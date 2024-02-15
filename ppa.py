@@ -5,6 +5,7 @@ import priors
 import glob
 import scipy.linalg as sl
 import mpmath
+import json
 mpmath.mp.dps=30
 #import jax.numpy.linalg as jnl
 #import jax
@@ -38,6 +39,9 @@ def svd_inv_mpmath(M):
     logdet = np.sum(np.log(  s  ))
     Minv = u@np.diag(1/s)@v
     return Minv , logdet
+
+
+
 
 #=====================================================#
 #    Load the information of all available pulsars    #
@@ -276,6 +280,61 @@ class Array():
 
         return F_matrix  , F_blocks_bysubsets
     
+    #=====================================================#
+    #    Mock Data Module                                 #
+    #=====================================================#
+
+    def Load_bestfit_params(self):
+        l10_EFAC = []
+        l10_EQUAD = []
+
+        with open("Parfile/spa_results.json",'r') as f:
+            spa_results = json.load(f)
+
+        for P in range( self.NPSR ):
+            PSR_NAME = self.PSR_NAMES[P]
+            for S in self.SUBSETS[P]:
+
+                l10_EFAC.append(spa_results[PSR_NAME][S][0])
+                l10_EQUAD.append(spa_results[PSR_NAME][S][1])
+
+        return np.array(l10_EFAC) , np.array(l10_EQUAD)
+    
+
+
+    #=====================================================#
+    #    Mock Data Module                                 #
+    #=====================================================#
+    def Gen_White_Mock_Data( self ,  method ):
+
+
+        if method == "Bestfit":
+            l10_EFAC , l10_EQUAD = self.Load_bestfit_params()
+            EFAC = 10 ** l10_EFAC
+            EQUAD = 10 ** l10_EQUAD
+            print("Data replaced by mock data using the redefined measurement error.")
+        elif method == "Obs":
+            EFAC = np.ones( self.NSUBSETS_TOTAL )
+            EQUAD = np.zeros( self.NSUBSETS_TOTAL ) 
+            print("Data replaced by mock data using the original measurement error.")
+
+        iSS = 0
+        DPA = np.zeros(self.NPSR,dtype="object")
+        for P in range( self.NPSR ):
+            DPA_P = []
+            for S in range(self.NSUBSETS_by_SS[P]):
+                DPA_ERR = np.sqrt(self.DPA_ERR[P][S]**2 * EFAC[iSS]**2 + EQUAD[iSS]**2)
+                DPA_S = np.random.normal( size = self.NOBS[P][S] ) * DPA_ERR
+                iSS += 1
+            DPA_P.append(DPA_S)
+            DPA[P] =  np.array(DPA_P ) 
+        
+        self.DPA = DPA
+    
+
+
+
+
 
     #=====================================================#
     #    For statistics                                   #

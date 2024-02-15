@@ -110,23 +110,9 @@ def lnprior( all_params ):
 
 
 
-def get_bestfit( ):
-    l10_EFAC = []
-    l10_EQUAD = []
-
-    with open("Parfile/spa_results.json",'r') as f:
-        spa_results = json.load(f)
-
-    for P in array.PSR_NAMES:
-        PSR = PSR_DICT[P]
-        for S in PSR["DATA"]:
-            l10_EFAC.append(spa_results[P][S][0])
-            l10_EQUAD.append(spa_results[P][S][1])
-    return np.array(l10_EFAC),np.array(l10_EQUAD)
-
 
 def get_init():
-    l10_EFAC_bf , l10_EQUAD_bf = get_bestfit( )
+    l10_EFAC_bf , l10_EQUAD_bf = array.Load_bestfit_params( )
     l10_EFAC_bf += np.random.rand(len(l10_EFAC_bf))-0.5
     l10_EQUAD_bf += np.random.rand(len(l10_EQUAD_bf))-0.5
     sDTE = np.random.rand(len(ones))*0.1 + 1 -0.05
