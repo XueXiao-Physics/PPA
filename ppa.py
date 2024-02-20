@@ -269,8 +269,8 @@ class Array():
 
                 NOBS = self.NOBS[P][S]
                 t = self.TOA[P][S] * sc.day
-                Fcos = np.cos(omega * t)
-                Fsin = np.sin(omega * t)
+                Fcos = np.cos(omega * t.astype(np.float64))
+                Fsin = np.sin(omega * t.astype(np.float64))
                 Fss = np.vstack([Fcos,Fsin])
                 F_blocks_bysubsets.append(Fss)
                 F_matrix[ P*2 : P*2 + 2 , NTOT : NTOT + NOBS] = Fss.copy()
@@ -354,6 +354,7 @@ class Array():
 
         
         def lnlikelihood( l10_EFAC , l10_EQUAD , sDTE , vs , l10_ma , l10_Sa ):
+
             #==========================#
             # Mapping Paramaters       #
             #==========================#
@@ -367,7 +368,7 @@ class Array():
             #==========================#
 
             N_by_SS = ( DPA_ERR_by_SS * EFAC ) ** 2 + EQUAD ** 2
-            N_logdet = np.sum( np.log( np.concatenate( N_by_SS ) ) )
+            N_logdet = np.sum( np.log( np.concatenate( N_by_SS ).astype(np.float64) ) )
 
 
             #==========================#
@@ -389,8 +390,8 @@ class Array():
             # Combine                  #
             #==========================#
             #if ( nl.eigvals(Phi) > 0 ).all() : # Phi has to be positve definite
-            #if 1>0:
-            try: 
+            if 1>0:
+            #try: 
                 #============================#
                 # For mean value subtraction #
                 #============================#
@@ -405,9 +406,9 @@ class Array():
                 for P in range(self.NPSR):
                     FNF_psr = np.zeros((2,2))
                     for i in range(self.NSUBSETS_by_SS[P]):
-                        DPA_whiten = DPA_by_SS[iSS] / np.sqrt( N_by_SS[iSS] )
-                        V_whiten = V_by_SS[iSS] / np.sqrt( N_by_SS[iSS] )
-                        F_whiten = F_by_SS[iSS] / np.sqrt( N_by_SS[iSS] )[None,:] 
+                        DPA_whiten = DPA_by_SS[iSS].astype(np.float64) / np.sqrt( N_by_SS[iSS].astype(np.float64)  )
+                        V_whiten = V_by_SS[iSS].astype(np.float64)  / np.sqrt( N_by_SS[iSS].astype(np.float64)  )
+                        F_whiten = F_by_SS[iSS].astype(np.float64)  / np.sqrt( N_by_SS[iSS].astype(np.float64) )[None,:] 
 
                         FNF_psr +=  F_whiten @ F_whiten.T
                         Fx[P*2 : P*2+2 , iSS] = F_whiten @ DPA_whiten
@@ -421,36 +422,24 @@ class Array():
                 #============================#
                 # Matrix Inversion           #
                 #============================#
-                """                
-                Phi1 = mpmath.matrix(Phi)
-                Phi_inv = mpmath.inverse(Phi1)
-                Phi_inv = np.array(Phi_inv.tolist(),dtype=np.float64)
-                Phi_logdet = np.float64(mpmath.log(mpmath.det(Phi1)))
 
-                PhiFNF = Phi_inv + FNF
-                PhiFNF1 = mpmath.matrix(PhiFNF)
-                PhiFNF_inv = mpmath.inverse(PhiFNF1)
-                PhiFNF_inv = np.array(PhiFNF_inv.tolist(),dtype=np.float64)
-                PhiFNF_logdet = np.float64(mpmath.log(mpmath.det(PhiFNF1)))
+                if l10_ma < -23.4 and method =="Full" :
                 
-                """
-                Phi_inv,Phi_logdet = svd_inv(Phi)
-                #Phi_inv = sl.inv( Phi  )
-                #Phi_inv_sgn , Phi_logdet = nl.slogdet( Phi_inv )
-                #if Phi_sgn != Phi_inv_sgn or not np.allclose( Phi_inv_logdet + Phi_logdet , 0 , atol = 1e-1 ):
-                #   Phi_logdet = -np.inf
-                #   print("%.3f"%l10_ma,"wrong Phi inversion")
+                    Phi1 = mpmath.matrix(Phi)
+                    Phi_inv = mpmath.inverse(Phi1)
+                    Phi_inv = np.array(Phi_inv.tolist(),dtype=np.float64)
+                    Phi_logdet = np.float64(mpmath.log(mpmath.det(Phi1)))
+
+                    PhiFNF = Phi_inv + FNF
+                    PhiFNF1 = mpmath.matrix(PhiFNF)
+                    PhiFNF_inv = mpmath.inverse(PhiFNF1)
+                    PhiFNF_inv = np.array(PhiFNF_inv.tolist(),dtype=np.float64)
+                    PhiFNF_logdet = np.float64(mpmath.log(mpmath.det(PhiFNF1)))
                 
-
-                PhiFNF = Phi_inv + FNF
-                PhiFNF_inv,PhiFNF_logdet = svd_inv(PhiFNF)
-                PhiFNF_sgn , PhiFNF_logdet = nl.slogdet( PhiFNF )
-                #PhiFNF_inv = sl.inv( PhiFNF )
-                #PhiFNF_inv_sgn , PhiFNF_logdet = nl.slogdet( PhiFNF_inv )
-                #if PhiFNF_sgn != PhiFNF_inv_sgn or not np.allclose( PhiFNF_inv_logdet + PhiFNF_logdet , 0 , atol = 1e-1 ):
-                #    PhiFNF_logdet = -np.inf
-                #    print("%.3f"%l10_ma,"wrong PhiFNF inversion")
-
+                else:
+                    Phi_inv,Phi_logdet = svd_inv(Phi)
+                    PhiFNF = Phi_inv + FNF
+                    PhiFNF_inv,PhiFNF_logdet = svd_inv(PhiFNF)
                 
                 
 
@@ -464,6 +453,7 @@ class Array():
                 #vCv_inv ,vCv_logdet = svd_inv(vCv)
                 x0_mlh = np.sum( vCv_inv @ vCx , axis=1)
                 #print(x0_mlh)
+
                 #============================#
                 # The end of Subtraction     #
                 #============================#
@@ -473,7 +463,8 @@ class Array():
 
                 #print("%.1f"%l10_ma,"%.1e"%lnlike_val)
                 #print(Phi_logdet , PhiFNF_logdet,lnlike_val)
-            except Exception as error:
+            else:
+            #except Exception as error:
                 lnlike_val = - np.inf
                 print("%.3f"%l10_ma,"inversion fail",error)
             

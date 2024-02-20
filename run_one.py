@@ -11,6 +11,9 @@ import mpi4py
 
 PSR_DICT = ppa.Load_Pulsars()
 pulsars = [ppa.Pulsar(PSR_DICT[psrn]) for psrn in PSR_DICT ]
+#pulsars = [pulsars[i] for i in [0,1,3,5,6,7,9,10,11,12,13,14,15,17,18,19,20]]
+#pulsars = [pulsars[i] for i in [0,5,13,15,18]]
+pulsars = [pulsars[i] for i in [0,10,12,16]]
 #pulsars.pop(18)
 
 PSR_NAME_LIST = [psr.PSR_NAME for psr in pulsars]
@@ -28,6 +31,9 @@ Construct the array
 """
 
 array = ppa.Array(pulsars)
+if "Mock" in tag or "mock" in tag:
+    array.Gen_White_Mock_Data("Bestfit")
+
 ones = np.ones(array.NPSR)
 zeros = np.zeros(array.NPSR)
 lnlike_sig0_raw = array.Generate_Lnlike_Function( method="Auto" )
@@ -146,7 +152,7 @@ print( lnlike(init))
 
 groups = [np.arange(len(init)) , [0, 2*NSS+NPSR+1 , 2*NSS+NPSR + 2 , 2*NSS+NPSR + 3  ]]
 cov = np.diag(np.ones(len(init)))
-sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=False, outDir = name )
+sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=True, outDir = name )
 sampler.sample(np.array(init),5000000,thin=100)
 
 
