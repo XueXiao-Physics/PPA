@@ -124,8 +124,9 @@ class Pulsar():
 
 
 
-    def gen_spa_likelihood( self , SS , p=[-5,5,-8,2]):
+    def gen_spa_likelihood( self , SS , p=[-1,3,-8,2 , -0.05 , 0.05] ):
         IDX = self.SUBSETS.index(SS)
+        TOA_yr = ( self.TOA[IDX]  ) * sc.day/sc.year
         DPA = self.DPA[IDX]
         DPA_ERR = self.DPA_ERR[IDX]
         NOBS = self.NOBS[IDX]
@@ -133,24 +134,27 @@ class Pulsar():
         CONST = 0.5*NOBS*np.log(2*np.pi)
 
         def lnlike( params ):
-            l10_EFAC , l10_EQUAD = params
+            l10_EFAC , l10_EQUAD , K = params
             EFAC = 10**l10_EFAC
             EQUAD = 10**l10_EQUAD
             DPA_ERR_NEW_SQ = ( EFAC * DPA_ERR )**2 + EQUAD**2
-            DPA0 = ( DPA / DPA_ERR_NEW_SQ ).sum() / ( 1 / DPA_ERR_NEW_SQ ).sum()
-            lnl = - 0.5*np.sum( (DPA - DPA0)**2 / DPA_ERR_NEW_SQ ) - 0.5*np.sum( np.log( DPA_ERR_NEW_SQ ) ) - CONST
+            DPA_NEW = DPA - K * TOA_yr
+
+            DPA0 = ( DPA_NEW / DPA_ERR_NEW_SQ ).sum() / ( 1 / DPA_ERR_NEW_SQ ).sum()
+            lnl = - 0.5*np.sum( (DPA_NEW - DPA0)**2 / DPA_ERR_NEW_SQ ) - 0.5*np.sum( np.log( DPA_ERR_NEW_SQ ) ) - CONST
             return lnl
         
 
         l10_EFAC_prior,l10_EFAC_prior_sampler = priors.gen_uniform_lnprior(p[0],p[1])
         l10_EQUAD_prior,l10_EQUAD_sampler = priors.gen_uniform_lnprior(p[2],p[3])
+        K_prior , K_sampler = priors.gen_uniform_lnprior(p[4],p[5] )
         
         def lnprior( params ):
-            l10_EFAC , l10_EQUAD = params
-            return l10_EFAC_prior(l10_EFAC)  + l10_EQUAD_prior(l10_EQUAD)
+            l10_EFAC , l10_EQUAD , K = params
+            return l10_EFAC_prior(l10_EFAC)  + l10_EQUAD_prior(l10_EQUAD) + K_prior(K)
         
         def init_gen():
-            init = np.array( [l10_EFAC_prior_sampler() , l10_EQUAD_sampler()] )
+            init = np.array( [l10_EFAC_prior_sampler() , l10_EQUAD_sampler() , K_sampler()] )
             return init
 
         return lnlike,lnprior,init_gen
@@ -287,6 +291,7 @@ class Array():
     def Load_bestfit_params(self):
         l10_EFAC = []
         l10_EQUAD = []
+        K = []
 
         with open("Parfile/spa_results.json",'r') as f:
             spa_results = json.load(f)
@@ -297,8 +302,9 @@ class Array():
 
                 l10_EFAC.append(spa_results[PSR_NAME][S][0])
                 l10_EQUAD.append(spa_results[PSR_NAME][S][1])
+                K.append(spa_results[PSR_NAME][S][2])
 
-        return np.array(l10_EFAC) , np.array(l10_EQUAD)
+        return np.array(l10_EFAC) , np.array(l10_EQUAD), np.array(K)
     
 
 
@@ -309,7 +315,7 @@ class Array():
 
 
         if method == "Bestfit":
-            l10_EFAC , l10_EQUAD = self.Load_bestfit_params()
+            l10_EFAC , l10_EQUAD , K = self.Load_bestfit_params()
             EFAC = 10 ** l10_EFAC
             EQUAD = 10 ** l10_EQUAD
             print("Data replaced by mock data using the redefined measurement error.")
@@ -353,8 +359,9 @@ class Array():
         CONST =  0.5 * self.NOBS_TOTAL * np.log( 2*np.pi )
 
         
-        def lnlikelihood( l10_EFAC , l10_EQUAD , sDTE , vs , l10_ma , l10_Sa ):
+        def lnlikelihood( l10_EFAC , l10_EQUAD , K , sDTE , vs , l10_ma , l10_Sa ):
 
+            #print(K,sDTE)
             #==========================#
             # Mapping Paramaters       #
             #==========================#
@@ -386,87 +393,85 @@ class Array():
                 raise
 
             F,F_by_SS = self.Get_F( ma )
-            #==========================#
-            # Combine                  #
-            #==========================#
-            #if ( nl.eigvals(Phi) > 0 ).all() : # Phi has to be positve definite
-            if 1>0:
-            #try: 
-                #============================#
-                # For mean value subtraction #
-                #============================#
-                Fx = np.zeros( ( self.NPSR*2,self.NSUBSETS_TOTAL ) )
-                Fv = np.zeros( ( self.NPSR*2,self.NSUBSETS_TOTAL ) )
-                vNx = np.zeros( self.NSUBSETS_TOTAL )
-                vNv = np.zeros( self.NSUBSETS_TOTAL )
-                xNx = np.zeros( self.NSUBSETS_TOTAL ) 
-                FNF = np.zeros( ( self.NPSR*2 , self.NPSR*2 ) )
-
-                iSS = 0
-                for P in range(self.NPSR):
-                    FNF_psr = np.zeros((2,2))
-                    for i in range(self.NSUBSETS_by_SS[P]):
-                        DPA_whiten = DPA_by_SS[iSS].astype(np.float64) / np.sqrt( N_by_SS[iSS].astype(np.float64)  )
-                        V_whiten = V_by_SS[iSS].astype(np.float64)  / np.sqrt( N_by_SS[iSS].astype(np.float64)  )
-                        F_whiten = F_by_SS[iSS].astype(np.float64)  / np.sqrt( N_by_SS[iSS].astype(np.float64) )[None,:] 
-
-                        FNF_psr +=  F_whiten @ F_whiten.T
-                        Fx[P*2 : P*2+2 , iSS] = F_whiten @ DPA_whiten
-                        Fv[P*2 : P*2+2 , iSS] = F_whiten @ V_whiten
-                        vNx[iSS] =  V_whiten @ DPA_whiten
-                        vNv[iSS] =  V_whiten @ V_whiten
-                        xNx[iSS] =  DPA_whiten @ DPA_whiten
-                        iSS += 1
-                    FNF[ P*2 : P*2+2 , P*2 : P*2+2 ] = FNF_psr
-
-                #============================#
-                # Matrix Inversion           #
-                #============================#
-
-                if l10_ma < -23.4 and method =="Full" :
-                
-                    Phi1 = mpmath.matrix(Phi)
-                    Phi_inv = mpmath.inverse(Phi1)
-                    Phi_inv = np.array(Phi_inv.tolist(),dtype=np.float64)
-                    Phi_logdet = np.float64(mpmath.log(mpmath.det(Phi1)))
-
-                    PhiFNF = Phi_inv + FNF
-                    PhiFNF1 = mpmath.matrix(PhiFNF)
-                    PhiFNF_inv = mpmath.inverse(PhiFNF1)
-                    PhiFNF_inv = np.array(PhiFNF_inv.tolist(),dtype=np.float64)
-                    PhiFNF_logdet = np.float64(mpmath.log(mpmath.det(PhiFNF1)))
-                
-                else:
-                    Phi_inv,Phi_logdet = svd_inv(Phi)
-                    PhiFNF = Phi_inv + FNF
-                    PhiFNF_inv,PhiFNF_logdet = svd_inv(PhiFNF)
-                
-                
+            
 
 
-                vNx = np.diag(vNx)
-                vNv = np.diag(vNv)
+            #============================#
+            # For mean value subtraction #
+            #============================#
+            Fx = np.zeros( ( self.NPSR*2,self.NSUBSETS_TOTAL ) )
+            Fv = np.zeros( ( self.NPSR*2,self.NSUBSETS_TOTAL ) )
+            vNx = np.zeros( self.NSUBSETS_TOTAL )
+            vNv = np.zeros( self.NSUBSETS_TOTAL )
+            xNx = np.zeros( self.NSUBSETS_TOTAL ) 
+            FNF = np.zeros( ( self.NPSR*2 , self.NPSR*2 ) )
 
-                vCx = vNx - Fv.T @ PhiFNF_inv @ Fx
-                vCv = vNv - Fv.T @ PhiFNF_inv @ Fv
-                vCv_inv = sl.inv(vCv)
-                #vCv_inv ,vCv_logdet = svd_inv(vCv)
-                x0_mlh = np.sum( vCv_inv @ vCx , axis=1)
-                #print(x0_mlh)
+            iSS = 0
+            for P in range(self.NPSR):
+                FNF_psr = np.zeros((2,2))
+                for i in range(self.NSUBSETS_by_SS[P]):
+                    NEW_DPA_SS = DPA_by_SS[iSS].astype(np.float64) - K[iSS] * sc.day / sc.year
+                    V_SS = V_by_SS[iSS].astype(np.float64)
+                    F_SS = F_by_SS[iSS].astype(np.float64)
+                    sqrt_N_SS = np.sqrt( N_by_SS[iSS].astype(np.float64) )
 
-                #============================#
-                # The end of Subtraction     #
-                #============================#
-                
-                Sigma_logdet = Phi_logdet + PhiFNF_logdet + N_logdet
-                lnlike_val = -0.5*( xNx.sum() - ( Fx.T @ PhiFNF_inv @ Fx).sum()  - x0_mlh @ vCv @ x0_mlh ) - 0.5*Sigma_logdet - CONST
+                    DPA_whiten =  NEW_DPA_SS / sqrt_N_SS
+                    V_whiten   =  V_SS       / sqrt_N_SS
+                    F_whiten   =  F_SS       / sqrt_N_SS[None,:] 
 
-                #print("%.1f"%l10_ma,"%.1e"%lnlike_val)
-                #print(Phi_logdet , PhiFNF_logdet,lnlike_val)
+                    FNF_psr +=  F_whiten @ F_whiten.T
+                    Fx[P*2 : P*2+2 , iSS] = F_whiten @ DPA_whiten
+                    Fv[P*2 : P*2+2 , iSS] = F_whiten @ V_whiten
+                    vNx[iSS] =  V_whiten @ DPA_whiten
+                    vNv[iSS] =  V_whiten @ V_whiten
+                    xNx[iSS] =  DPA_whiten @ DPA_whiten
+                    iSS += 1
+                FNF[ P*2 : P*2+2 , P*2 : P*2+2 ] = FNF_psr
+
+            #============================#
+            # Matrix Inversion           #
+            #============================#
+
+            if l10_ma < -23.4 and method =="Full" :
+            
+                Phi1 = mpmath.matrix(Phi)
+                Phi_inv = mpmath.inverse(Phi1)
+                Phi_inv = np.array(Phi_inv.tolist(),dtype=np.float64)
+                Phi_logdet = np.float64(mpmath.log(mpmath.det(Phi1)))
+
+                PhiFNF = Phi_inv + FNF
+                PhiFNF1 = mpmath.matrix(PhiFNF)
+                PhiFNF_inv = mpmath.inverse(PhiFNF1)
+                PhiFNF_inv = np.array(PhiFNF_inv.tolist(),dtype=np.float64)
+                PhiFNF_logdet = np.float64(mpmath.log(mpmath.det(PhiFNF1)))
+            
             else:
-            #except Exception as error:
-                lnlike_val = - np.inf
-                print("%.3f"%l10_ma,"inversion fail",error)
+                Phi_inv,Phi_logdet = svd_inv(Phi)
+                PhiFNF = Phi_inv + FNF
+                PhiFNF_inv,PhiFNF_logdet = svd_inv(PhiFNF)
+            
+            
+
+
+            vNx = np.diag(vNx)
+            vNv = np.diag(vNv)
+
+            vCx = vNx - Fv.T @ PhiFNF_inv @ Fx
+            vCv = vNv - Fv.T @ PhiFNF_inv @ Fv
+            vCv_inv = sl.inv(vCv)
+            #vCv_inv ,vCv_logdet = svd_inv(vCv)
+            x0_mlh = np.sum( vCv_inv @ vCx , axis=1)
+            #print(x0_mlh)
+
+            #============================#
+            # The end of Subtraction     #
+            #============================#
+            
+            Sigma_logdet = Phi_logdet + PhiFNF_logdet + N_logdet
+            lnlike_val = -0.5*( xNx.sum() - ( Fx.T @ PhiFNF_inv @ Fx).sum()  - x0_mlh @ vCv @ x0_mlh ) - 0.5*Sigma_logdet - CONST
+
+            #print("%.1f"%l10_ma,"%.1e"%lnlike_val)
+            #print(Phi_logdet , PhiFNF_logdet,lnlike_val)
             
             return lnlike_val
 
