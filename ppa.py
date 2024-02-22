@@ -461,7 +461,6 @@ class Array():
             vCv_inv = sl.inv(vCv)
             #vCv_inv ,vCv_logdet = svd_inv(vCv)
             x0_mlh = np.sum( vCv_inv @ vCx , axis=1)
-            #print(x0_mlh)
 
             #============================#
             # The end of Subtraction     #
@@ -470,6 +469,8 @@ class Array():
             Sigma_logdet = Phi_logdet + PhiFNF_logdet + N_logdet
             lnlike_val = -0.5*( xNx.sum() - ( Fx.T @ PhiFNF_inv @ Fx).sum()  - x0_mlh @ vCv @ x0_mlh ) - 0.5*Sigma_logdet - CONST
 
+            if l10_ma < -23.4 and method =="Full":
+                print(lnlike_val)
             #print("%.1f"%l10_ma,"%.1e"%lnlike_val)
             #print(Phi_logdet , PhiFNF_logdet,lnlike_val)
             

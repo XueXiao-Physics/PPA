@@ -17,6 +17,7 @@ pulsars = [ppa.Pulsar(PSR_DICT[psrn]) for psrn in PSR_DICT ]
 #pulsars = [pulsars[i] for i in [0,1,3,5,6,7,9,10,11,12,13,14,15,17,18,19,20]]
 #pulsars = [pulsars[i] for i in [0,5,13,15,18]]
 #pulsars = [pulsars[i] for i in [0,10,12,16]]
+#pulsars = [pulsars[i] for i in [18]]
 #pulsars.pop(18)
 
 PSR_NAME_LIST = [psr.PSR_NAME for psr in pulsars]
@@ -129,13 +130,14 @@ def lnprior( all_params ):
 
 def get_init():
     l10_EFAC_bf , l10_EQUAD_bf , K_bf = array.Load_bestfit_params( )
-    l10_EFAC_bf += np.random.rand(len(l10_EFAC_bf))- 0.5
-    l10_EQUAD_bf += np.random.rand(len(l10_EQUAD_bf))- 0.5
-    K_bf += np.random.rand(len(K_bf)) * 0.001
+    #l10_EFAC_bf += np.random.rand(len(l10_EFAC_bf))- 0.5
+    #l10_EQUAD_bf += np.random.rand(len(l10_EQUAD_bf))- 0.5
+    #K_bf += np.random.rand(len(K_bf)) * 0.001
     sDTE = np.random.rand(len(ones))*0.1 + 1 - 0.05
+    
 
-    #init_val = [nmodel_sp()] +[l10_EFAC_sp() for i in range(NSS)] + [l10_EQUAD_sp() for i in range(NSS)] + [K_sp() for i in range(NSS)]  + sDTE.tolist() + [v_sp()] + [l10_ma_sp()] + [l10_Sa_sp()]
-    init_val = [nmodel_sp()] + l10_EFAC_bf.tolist() + l10_EQUAD_bf.tolist() + K_bf.tolist() + sDTE.tolist() + [v_sp()] + [l10_ma_sp()] + [l10_Sa_sp()]
+    init_val = [nmodel_sp()] +[l10_EFAC_sp() for i in range(NSS)] + [l10_EQUAD_sp() for i in range(NSS)] + [K_sp() for i in range(NSS)]  + sDTE.tolist() + [v_sp()] + [l10_ma_sp()] + [l10_Sa_sp()]
+    #init_val = [nmodel_sp()] + l10_EFAC_bf.tolist() + l10_EQUAD_bf.tolist() + K_bf.tolist() + sDTE.tolist() + [v_sp()] + [l10_ma_sp()] + [l10_Sa_sp()]
     return np.array(init_val)
         
 """
@@ -161,6 +163,7 @@ init = get_init()
 print( lnlike(init))
 
 groups = [np.arange(len(init)) , [0, 3*NSS+NPSR+1 , 3*NSS+NPSR + 2 , 3*NSS+NPSR + 3  ]]
+groups += [[i,i+NSS,i+2*NSS,i+3*NSS] for i in range(NSS)]
 cov = np.diag(np.ones(len(init)))
 sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=False, outDir = name )
 sampler.sample(np.array(init),5000000,thin=100)
