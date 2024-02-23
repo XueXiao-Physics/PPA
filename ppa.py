@@ -30,19 +30,11 @@ def svd_inv( M ):
         return u @ np.diag(1/s) @ v , np.sum(np.log(s))
 
 
-def svd_inv_mpmath(M):
-    M1 = mpmath.matrix(M)
-    usv = mpmath.svd_r(M1)
-    s = np.array(usv[1].tolist(),dtype=np.float64)[:,0]
-    u = np.array(usv[0].tolist(),dtype=np.float64)
-    v = np.array(usv[2].tolist(),dtype=np.float64)
-
-    logdet = np.sum(np.log(  s  ))
-    Minv = u@np.diag(1/s)@v
-    return Minv , logdet
-
-
-
+def mpmath_inv(M):
+    M_inv = mpmath.inverse(mpmath.matrix(M))
+    M_inv = np.array(M_inv.tolist(),dtype=np.float64)
+    M_logdet = np.float64(mpmath.log(mpmath.det(M)))
+    return M_inv,M_logdet
 
 #=========================================================#
 #    Load the information of all available pulsars        #
@@ -465,26 +457,22 @@ class Array():
             #=============================================#
             #     Matrix Inversion                        #
             #=============================================#
-
+                    
             if l10_ma < -23.4 and method =="Full" :
             
-                Phi1 = mpmath.matrix(Phi)
-                Phi_inv = mpmath.inverse(Phi1)
-                Phi_inv = np.array(Phi_inv.tolist(),dtype=np.float64)
-                Phi_logdet = np.float64(mpmath.log(mpmath.det(Phi1)))
-
+                Phi_inv , Phi_logdet = mpmath_inv(Phi)
                 PhiFNF = Phi_inv + FNF
-                PhiFNF1 = mpmath.matrix(PhiFNF)
-                PhiFNF_inv = mpmath.inverse(PhiFNF1)
-                PhiFNF_inv = np.array(PhiFNF_inv.tolist(),dtype=np.float64)
-                PhiFNF_logdet = np.float64(mpmath.log(mpmath.det(PhiFNF1)))
+                PhiFNF_inv , PhiFNF_logdet = mpmath_inv(PhiFNF)
             
             else:
-                Phi_inv,Phi_logdet = svd_inv(Phi)
-                PhiFNF = Phi_inv + FNF
-                PhiFNF_inv,PhiFNF_logdet = svd_inv(PhiFNF)
-            
-            
+                try:
+                    Phi_inv,Phi_logdet = svd_inv(Phi)
+                    PhiFNF = Phi_inv + FNF
+                    PhiFNF_inv,PhiFNF_logdet = svd_inv(PhiFNF)
+                except:
+                    Phi_inv , Phi_logdet = mpmath_inv(Phi)
+                    PhiFNF = Phi_inv + FNF
+                    PhiFNF_inv , PhiFNF_logdet = mpmath_inv(PhiFNF) 
 
 
             vNx = np.diag(vNx)

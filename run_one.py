@@ -75,7 +75,7 @@ lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Full" )
 NSS = np.sum( array.NSUBSETS_by_SS )
 NPSR = array.NPSR
 
-tag += f"_dlp{args.dlnprior:.0f}_Np{NPSR}_Ns{NSS}"
+tag += f"_dlp_{args.dlnprior:.0f}_Np{NPSR}_Ns{NSS}"
 print(tag)
 
 
@@ -150,15 +150,28 @@ def lnlike( all_params ):
         lnlike_val =  lnlike_sig1( all_params[1:] ) 
     return lnlike_val
 
-nmodel_lp,nmodel_sp = priors.gen_uniform_lnprior(-1,1)
+
+if args.dlnprior == np.inf:
+    add1 = 0
+    add2 = -np.inf
+    nmodel_lp,nmodel_sp = priors.gen_uniform_lnprior(-1,0)
+elif args.dlnprior == -np.inf:
+    add1 = -np.inf
+    add2 = 0
+    nmodel_lp,nmodel_sp = priors.gen_uniform_lnprior(0,1)
+else:
+    add1 = args.dlnprior
+    add2 = 0
+    nmodel_lp,nmodel_sp = priors.gen_uniform_lnprior(-1,1)
+
 def lnprior( all_params ):
     
     nmodel = all_params[0] 
     lnprior_val = lnprior_nonmodel( all_params[1:] ) + nmodel_lp(all_params[0])
     if nmodel < 0:
-        lnprior_val += args.dlnprior
+        lnprior_val += add1
     elif nmodel >= 0:
-        pass
+        lnprior_val += add2
     return  lnprior_val
 
 
