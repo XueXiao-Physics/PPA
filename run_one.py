@@ -77,9 +77,11 @@ NPSR = array.NPSR
 
 tag += f"_dlp{args.dlnprior:.0f}_Np{NPSR}_Ns{NSS}"
 print(tag)
-"""
-Define likelihood and prior
-"""
+
+
+#=====================================================#
+#    Mapping the parameters                           #
+#=====================================================#
 def Mapper(params):
 
     l10_EFAC = params[:NSS]
@@ -92,6 +94,11 @@ def Mapper(params):
 
     return l10_EFAC , l10_EQUAD , K, sDTE , v , l10_ma , l10_Sa
 
+
+#=====================================================#
+#    Define lnlike                                    #
+#=====================================================#
+
 def lnlike_sig0( params ):
     lnlike_val = lnlike_sig0_raw(*Mapper(params))
     return lnlike_val
@@ -101,6 +108,11 @@ def lnlike_sig1( params ):
     return lnlike_val
 
 
+
+
+#=====================================================#
+#    Define lnprior                                   #
+#=====================================================#
 
 l10_EFAC_lp , l10_EFAC_sp = priors.gen_uniform_lnprior(-1,3)
 l10_EQUAD_lp , l10_EQUAD_sp = priors.gen_uniform_lnprior(-8,2)
@@ -127,9 +139,9 @@ def lnprior_nonmodel( params ):
 
 
 
-"""
-Add hyper parameters
-"""
+#=====================================================#
+#    Add hyper paramter nmodel                        #
+#=====================================================#
 def lnlike( all_params ):
     nmodel = all_params[0]
     if nmodel < 0:
@@ -150,7 +162,9 @@ def lnprior( all_params ):
     return  lnprior_val
 
 
-
+#=====================================================#
+#    Initial values                                   #
+#=====================================================#
 
 
 def get_init():
@@ -165,9 +179,13 @@ def get_init():
     #init_val = [nmodel_sp()] + l10_EFAC_bf.tolist() + l10_EQUAD_bf.tolist() + K_bf.tolist() + sDTE.tolist() + [v_sp()] + [l10_ma_sp()] + [l10_Sa_sp()]
     return np.array(init_val)
         
-"""
-Prepare the run
-"""
+
+
+
+
+#=====================================================#
+#    Prepare the run                                  #
+#=====================================================#
 
 with open("chain_dir.txt",'r') as f:
     predir = f.read().split('\n')[0]+"/Signal_Chain/" 
@@ -181,9 +199,9 @@ name = predir + tag +  f"/bin_{args.lma_min:.2f}_{args.lma_max:.2f}"
 #os.system("mkdir -p "+name)
 
 
-"""
-Run the sampler
-"""
+#=====================================================#
+#    Run the sampler                                  #
+#=====================================================#
 init = get_init()
 print( lnlike(init))
 
