@@ -176,7 +176,7 @@ now = datetime.datetime.now()
 #now.strftime("%d-%m-%H:%M")
 
 #name = predir + tag + now.strftime("_T_%d_%m_%y")+ "/" + tag + f"_{dlnlike:.0f}_{lma_min:.2f}_{lma_max:.2f}_Np{NPSR}_Ns{NSS}"
-name = predir + tag + "/" + tag + f"_{args.lma_min:.2f}_{args.lma_max:.2f}"
+name = predir + tag +  f"/bin_{args.lma_min:.2f}_{args.lma_max:.2f}"
 
 #os.system("mkdir -p "+name)
 
