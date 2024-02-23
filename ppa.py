@@ -346,7 +346,7 @@ class Array():
         _Phi = self.Get_Sigma( 1e-3 , 10**mock_lma ,np.ones(self.NSUBSETS_TOTAL) )
         _Phi_Full = np.block( _Phi.tolist() )  
         _Phi_Auto = np.diag( np.diag( _Phi_Full) )
-        F,F_by_SS = self.Get_F( mock_lma )
+        F,F_by_SS = self.Get_F( 10**mock_lma )
 
         # Gen mock data
         if method == "auto":
@@ -356,7 +356,8 @@ class Array():
         else:
             raise
 
-        mock = np.random.multivariate_normal(np.zeros(len(Phi)),Phi) * 10**mock_lSa
+        _mock = np.random.multivariate_normal(np.zeros(len(Phi)),Phi) * 10**mock_lSa
+        mock = _mock@F
 
         # Divide Data
         pointer = np.concatenate([[0],np.cumsum(np.concatenate(self.NOBS))])    
@@ -365,7 +366,7 @@ class Array():
         for P in range( self.NPSR ):
             DPA_P = []
             for S in range(self.NSUBSETS_by_SS[P]):
-                DPA_S = (mock@F)[ pointer[iSS] : pointer[iSS+1] ] + DPA_white[P][S]
+                DPA_S = mock[ pointer[iSS] : pointer[iSS+1] ] + DPA_white[P][S]
                 DPA_P.append(DPA_S)
                 iSS += 1
             DPA[P] = np.array(DPA_P ) 
