@@ -2,11 +2,10 @@ import numpy as np
 import sys
 import os
 lma_idx = float(sys.argv[1])
-dlnlike = float(sys.argv[2])
-tag = sys.argv[3]
+dlnprior = float(sys.argv[2])
 
-log10ma_mid = -24.00 + float(lma_idx)*0.1
-l10ma_min = log10ma_mid-0.05
-l10ma_max = log10ma_mid+0.05
+lma_mid = -24.00 + float(lma_idx)*0.1
+lma_min = lma_mid-0.05
+lma_max = lma_mid+0.05
 
-os.system("python run_one.py "+str(l10ma_min)+" "+str(l10ma_max)+" "+str(dlnlike)+" "+tag)
+os.system("python run_one.py -mock none -lma_min "+str(lma_min)+" -lma_max "+str(lma_max)+" -dlnprior "+str(dlnprior)+" ")

@@ -6,6 +6,7 @@ import glob
 import scipy.linalg as sl
 import mpmath
 import json
+import argparse
 mpmath.mp.dps=30
 #import jax.numpy.linalg as jnl
 #import jax
@@ -43,9 +44,9 @@ def svd_inv_mpmath(M):
 
 
 
-#=====================================================#
-#    Load the information of all available pulsars    #
-#=====================================================#
+#=========================================================#
+#    Load the information of all available pulsars        #
+#=========================================================#
 def Load_Pulsars():
 
     with open("Parfile/par.txt",'r') as f:
@@ -97,9 +98,9 @@ def Load_Pulsars():
         return param_dict
     
 
-#=====================================================#
-#    Pre process the pulsar and put them in a class   #
-#=====================================================#
+#=========================================================#
+#    Pre process the pulsar and put them in a class       #
+#=========================================================#
 class Pulsar():
 
     def __init__( self, PSR_DICT  ):
@@ -163,9 +164,9 @@ class Pulsar():
 
 
 
-#=====================================================#
-#    For an list of "Pulsar" project, make an array   #
-#=====================================================#
+#=========================================================#
+#    For an list of "Pulsar" project, make an array       #
+#=========================================================#
 
 class Array():
 
@@ -285,7 +286,7 @@ class Array():
         return F_matrix  , F_blocks_bysubsets
     
     #=====================================================#
-    #    Mock Data Module                                 #
+    #    Load Bestfit parameters                          #
     #=====================================================#
 
     def Load_bestfit_params(self):
@@ -311,18 +312,13 @@ class Array():
     #=====================================================#
     #    Mock Data Module                                 #
     #=====================================================#
-    def Gen_White_Mock_Data( self ,  method ):
+    def Gen_White_Mock_Data( self , seed=10):
 
-
-        if method == "Bestfit":
-            l10_EFAC , l10_EQUAD , K = self.Load_bestfit_params()
-            EFAC = 10 ** l10_EFAC
-            EQUAD = 10 ** l10_EQUAD
-            print("Data replaced by mock data using the redefined measurement error.")
-        elif method == "Obs":
-            EFAC = np.ones( self.NSUBSETS_TOTAL )
-            EQUAD = np.zeros( self.NSUBSETS_TOTAL ) 
-            print("Data replaced by mock data using the original measurement error.")
+        np.random.seed(seed)
+        l10_EFAC , l10_EQUAD , K = self.Load_bestfit_params()
+        EFAC = 10 ** l10_EFAC
+        EQUAD = 10 ** l10_EQUAD
+ 
 
         iSS = 0
         DPA = np.zeros(self.NPSR,dtype="object")
@@ -332,14 +328,52 @@ class Array():
                 DPA_ERR = np.sqrt(self.DPA_ERR[P][S]**2 * EFAC[iSS]**2 + EQUAD[iSS]**2)
                 DPA_S = np.random.normal( size = self.NOBS[P][S] ) * DPA_ERR
                 iSS += 1
-            DPA_P.append(DPA_S)
+                DPA_P.append(DPA_S)
             DPA[P] =  np.array(DPA_P ) 
         
-        self.DPA = DPA
-    
+        return DPA
 
 
+    def Gen_Red_Mock_Data( self , method , mock_lma , mock_lSa  , seed=10 ):
 
+
+        np.random.seed(seed)
+
+        # Generate white noise first
+        DPA_white = self.Gen_White_Mock_Data(seed=seed)
+
+        # Get core matrix Phi
+        _Phi = self.Get_Sigma( 1e-3 , 10**mock_lma ,np.ones(self.NSUBSETS_TOTAL) )
+        _Phi_Full = np.block( _Phi.tolist() )  
+        _Phi_Auto = np.diag( np.diag( _Phi_Full) )
+        F,F_by_SS = self.Get_F( mock_lma )
+
+        # Gen mock data
+        if method == "auto":
+            Phi = _Phi_Auto
+        elif method == "full":
+            Phi = _Phi_Full
+        else:
+            raise
+
+        mock = np.random.multivariate_normal(np.zeros(len(Phi)),Phi) * 10**mock_lSa
+
+        # Divide Data
+        pointer = np.concatenate([[0],np.cumsum(np.concatenate(self.NOBS))])    
+        iSS = 0
+        DPA = np.zeros(self.NPSR,dtype="object")
+        for P in range( self.NPSR ):
+            DPA_P = []
+            for S in range(self.NSUBSETS_by_SS[P]):
+                DPA_S = (mock@F)[ pointer[iSS] : pointer[iSS+1] ] + DPA_white[P][S]
+                DPA_P.append(DPA_S)
+                iSS += 1
+            DPA[P] = np.array(DPA_P ) 
+
+
+        
+        return DPA
+        
 
 
     #=====================================================#
@@ -362,25 +396,25 @@ class Array():
         def lnlikelihood( l10_EFAC , l10_EQUAD , K , sDTE , vs , l10_ma , l10_Sa ):
 
             #print(K,sDTE)
-            #==========================#
-            # Mapping Paramaters       #
-            #==========================#
+            #=============================================#
+            #     Mapping Paramaters                      #
+            #=============================================#
             EFAC = 10 ** l10_EFAC
             EQUAD = 10 ** l10_EQUAD
             ma = 10 ** l10_ma
             Sa = 10 ** l10_Sa
 
-            #==========================#
-            # White Noise              #
-            #==========================#
+            #=============================================#
+            #     White Noise                             #
+            #=============================================#
 
             N_by_SS = ( DPA_ERR_by_SS * EFAC ) ** 2 + EQUAD ** 2
             N_logdet = np.sum( np.log( np.concatenate( N_by_SS ).astype(np.float64) ) )
 
 
-            #==========================#
-            # Axion Signal             #
-            #==========================#
+            #=============================================#
+            #     Axion Signal                            #
+            #=============================================#
             _Phi = self.Get_Sigma( vs*1e-3 , ma , sDTE)
             _Phi_Full = np.block( _Phi.tolist() )  
             _Phi_Auto = np.diag( np.diag(_Phi_Full) )
@@ -395,10 +429,9 @@ class Array():
             F,F_by_SS = self.Get_F( ma )
             
 
-
-            #============================#
-            # For mean value subtraction #
-            #============================#
+            #=============================================#
+            #     For mean value subtraction              #
+            #=============================================#
             Fx = np.zeros( ( self.NPSR*2,self.NSUBSETS_TOTAL ) )
             Fv = np.zeros( ( self.NPSR*2,self.NSUBSETS_TOTAL ) )
             vNx = np.zeros( self.NSUBSETS_TOTAL )
@@ -428,9 +461,9 @@ class Array():
                     iSS += 1
                 FNF[ P*2 : P*2+2 , P*2 : P*2+2 ] = FNF_psr
 
-            #============================#
-            # Matrix Inversion           #
-            #============================#
+            #=============================================#
+            #     Matrix Inversion                        #
+            #=============================================#
 
             if l10_ma < -23.4 and method =="Full" :
             
@@ -458,21 +491,19 @@ class Array():
 
             vCx = vNx - Fv.T @ PhiFNF_inv @ Fx
             vCv = vNv - Fv.T @ PhiFNF_inv @ Fv
-            vCv_inv = sl.inv(vCv)
-            #vCv_inv ,vCv_logdet = svd_inv(vCv)
+            #vCv_inv = sl.inv(vCv)
+            vCv_inv , vCv_logdet = svd_inv(vCv)
             x0_mlh = np.sum( vCv_inv @ vCx , axis=1)
 
-            #============================#
-            # The end of Subtraction     #
-            #============================#
+            #=============================================#
+            #     The end of Subtraction                  #
+            #=============================================#
             
             Sigma_logdet = Phi_logdet + PhiFNF_logdet + N_logdet
             lnlike_val = -0.5*( xNx.sum() - ( Fx.T @ PhiFNF_inv @ Fx).sum()  - x0_mlh @ vCv @ x0_mlh ) - 0.5*Sigma_logdet - CONST
 
             if l10_ma < -23.4 and method =="Full":
                 print(lnlike_val)
-            #print("%.1f"%l10_ma,"%.1e"%lnlike_val)
-            #print(Phi_logdet , PhiFNF_logdet,lnlike_val)
             
             return lnlike_val
 

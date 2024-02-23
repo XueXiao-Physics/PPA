@@ -7,40 +7,65 @@ import sys
 import datetime
 import os
 import json
+import argparse
 try:
     import mpi4py
 except Exception:
     print("no mpi4py")
 
+
+
+#=====================================================#
+#    Read the argument                                #
+#=====================================================#
+
+parser = argparse.ArgumentParser(
+    prog = "PPA",
+    description="Run Bayesian Analysis of PPA"
+)
+
+parser.add_argument("-lma_min", action="store" , type=float , required=True )
+parser.add_argument("-lma_max", action="store" , type=float , required=True )
+parser.add_argument("-dlnprior" , action = "store" , type = float , default="0" )
+
+parser.add_argument("-mock" , choices=["none" , "white" , "auto" ,"data"] , default="data")
+parser.add_argument("-mock_lma" , action = "store" , type = float )
+parser.add_argument("-mock_lSa" , action = "store" , type = float )
+args = parser.parse_args()
+
+#=====================================================#
+#    Load the pulsars                                 #
+#=====================================================#
+
+
 PSR_DICT = ppa.Load_Pulsars()
 pulsars = [ppa.Pulsar(PSR_DICT[psrn]) for psrn in PSR_DICT ]
 #pulsars = [pulsars[i] for i in [0,1,3,5,6,7,9,10,11,12,13,14,15,17,18,19,20]]
-#pulsars = [pulsars[i] for i in [0,5,13,15,18]]
-#pulsars = [pulsars[i] for i in [0,10,12,16]]
-#pulsars = [pulsars[i] for i in [18]]
-#pulsars.pop(18)
+
 
 PSR_NAME_LIST = [psr.PSR_NAME for psr in pulsars]
-"""
-Get the prior range
-"""
 
-lma_min = float(sys.argv[1])
-lma_max = float(sys.argv[2])
-dlnlike = float(sys.argv[3])
-tag = ""
-try:
-    tag += sys.argv[4]
-except:
-    pass
 
-"""
-Construct the array
-"""
+#=====================================================#
+#    Construct the array                              #
+#=====================================================#
 
+tag = args.mock
 array = ppa.Array(pulsars)
-if "Mock" in tag or "mock" in tag:
-    array.Gen_White_Mock_Data("Bestfit")
+if args.mock == "white":
+    array.DPA = array.Gen_White_Mock_Data()
+    print("Data replaced by mock data using the redefined measurement error.")
+elif args.mock == "auto":
+    array.DPA = array.Gen_Red_Mock_Data("auto",args.mock_lma , args.mock_lSa)
+    print("Data replaced by mock data using the redefined measurement error.")
+    print("Additional Red noise added: lma=%.1f, lSa=%.1f"%(args.mock_lma,args.mock_lSa), ". Method: " + "auto")
+    tag += "_%.1f_%.1f"%(args.mock_lma,args.mock_lSa)
+elif args.mock == "full":
+    array.DPA = array.Gen_Red_Mock_Data("full",args.mock_lma , args.mock_lSa)
+    print("Data replaced by mock data using the redefined measurement error.")
+    print("Additional Red noise added: lma=%.1f, lSa=%.1f"%(args.mock_lma,args.mock_lSa), ". Method: " + "auto")
+    tag += "_%.1f_%.1f"%(args.mock_lma,args.mock_lSa)
+
 
 ones = np.ones(array.NPSR)
 zeros = np.zeros(array.NPSR)
@@ -50,8 +75,8 @@ lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Full" )
 NSS = np.sum( array.NSUBSETS_by_SS )
 NPSR = array.NPSR
 
-tag = tag+f"_{dlnlike:.0f}_Np{NPSR}_Ns{NSS}"
-
+tag += f"_dlp{args.dlnprior:.0f}_Np{NPSR}_Ns{NSS}"
+print(tag)
 """
 Define likelihood and prior
 """
@@ -82,7 +107,7 @@ l10_EQUAD_lp , l10_EQUAD_sp = priors.gen_uniform_lnprior(-8,2)
 K_lp , K_sp = priors.gen_uniform_lnprior(-0.05,0.05)
 sDTE_lp = array.sDTE_LNPRIOR
 v_lp , v_sp = priors.gen_uniform_lnprior(0.9,1.1)
-l10_ma_lp , l10_ma_sp = priors.gen_uniform_lnprior(lma_min,lma_max)
+l10_ma_lp , l10_ma_sp = priors.gen_uniform_lnprior(args.lma_min,args.lma_max)
 l10_Sa_lp , l10_Sa_sp = priors.gen_uniform_lnprior(-8,2)
 
 def lnprior_nonmodel( params ):
@@ -119,7 +144,7 @@ def lnprior( all_params ):
     nmodel = all_params[0] 
     lnprior_val = lnprior_nonmodel( all_params[1:] ) + nmodel_lp(all_params[0])
     if nmodel < 0:
-        lnprior_val += dlnlike
+        lnprior_val += args.dlnprior
     elif nmodel >= 0:
         pass
     return  lnprior_val
@@ -151,7 +176,7 @@ now = datetime.datetime.now()
 #now.strftime("%d-%m-%H:%M")
 
 #name = predir + tag + now.strftime("_T_%d_%m_%y")+ "/" + tag + f"_{dlnlike:.0f}_{lma_min:.2f}_{lma_max:.2f}_Np{NPSR}_Ns{NSS}"
-name = predir + tag + "/" + tag + f"_{lma_min:.2f}_{lma_max:.2f}"
+name = predir + tag + "/" + tag + f"_{args.lma_min:.2f}_{args.lma_max:.2f}"
 
 #os.system("mkdir -p "+name)
 
