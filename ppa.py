@@ -381,6 +381,7 @@ class Array():
         DPA_ERR_by_SS = np.array( [ x for xs in self.DPA_ERR for x in xs] , dtype="object" )
         DPA_by_SS = np.array( [ x for xs in self.DPA for x in xs] , dtype="object" )
         V_by_SS = np.array( [ x/x for xs in self.DPA for x in xs] , dtype="object" )
+        TOA_by_SS = np.array( [ x for xs in self.TOA for x in xs] , dtype="object" )
 
 
         CONST =  0.5 * self.NOBS_TOTAL * np.log( 2*np.pi )
@@ -436,7 +437,7 @@ class Array():
             for P in range(self.NPSR):
                 FNF_psr = np.zeros((2,2))
                 for i in range(self.NSUBSETS_by_SS[P]):
-                    NEW_DPA_SS = DPA_by_SS[iSS].astype(np.float64) - K[iSS] * sc.day / sc.year
+                    NEW_DPA_SS = DPA_by_SS[iSS].astype(np.float64) - K[iSS] * sc.day / sc.year * TOA_by_SS[iSS]
                     V_SS = V_by_SS[iSS].astype(np.float64)
                     F_SS = F_by_SS[iSS].astype(np.float64)
                     sqrt_N_SS = np.sqrt( N_by_SS[iSS].astype(np.float64) )
