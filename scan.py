@@ -9,7 +9,7 @@ method = "auto"
 mock_lma = -22.5
 mock_lSa = -1
 dlnprior = "\" inf\""
-for lma_idx in range(56):
+for lma_idx in range(5,56):
     lma_mid = -24.00 + float(lma_idx)*0.1
     lma_min = lma_mid-0.05
     lma_max = lma_mid+0.05

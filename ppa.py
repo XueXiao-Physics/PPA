@@ -95,7 +95,7 @@ def Load_Pulsars():
 #=========================================================#
 class Pulsar():
 
-    def __init__( self, PSR_DICT  ):
+    def __init__( self, PSR_DICT , order = 2 ):
         self.PSR_NAME = PSR_DICT["PSR"]
         #self.import_psr()
 
@@ -107,47 +107,85 @@ class Pulsar():
         self.DPA = []
         self.DPA_ERR = []
         self.NOBS = []
+        self.DES_MTX = []
         for SS in self.SUBSETS:
             TOA , DPA , DPA_ERR = np.loadtxt( PSR_DICT["DATA"][SS] )
             NOBS = len(TOA)
+            if order in [0 , 1 , 2 ]:
+                #print("subtraction order: %i"%order)
+                DES_MTX = self.get_design_matrix( TOA , order =  order )
+            else:
+                #print("subtraction order: None")
+                DES_MTX = None
+
+
             self.TOA.append(TOA-TREF)
             self.DPA.append(DPA)
             self.DPA_ERR.append(DPA_ERR)
             self.NOBS.append(NOBS)
+            self.DES_MTX.append(DES_MTX)
+
+
+    
+    def get_design_matrix( self , TOA , order = 2 ):
+
+        TOA_mid = ( TOA.max() + TOA.min() ) / 2
+        TOA_interval = ( TOA.max() - TOA.min() )
+        TOA_normalized = ( TOA - TOA_mid ) / TOA_interval
+
+        vec1 = TOA_normalized / TOA_normalized
+        vec2 = TOA_normalized
+        vec3 = TOA_normalized ** 2
+
+        DES_MTX = np.array( [vec1 , vec2 , vec3] )     
+        
+        return DES_MTX[:order+1,:]          
 
 
 
-    def gen_spa_likelihood( self , SS , p=[-1,3,-8,2 , -0.05 , 0.05] ):
-        IDX = self.SUBSETS.index(SS)
-        TOA_yr = ( self.TOA[IDX]  ) * sc.day/sc.year
-        DPA = self.DPA[IDX]
-        DPA_ERR = self.DPA_ERR[IDX]
-        NOBS = self.NOBS[IDX]
 
-        CONST = 0.5*NOBS*np.log(2*np.pi)
+    def gen_spa_likelihood( self , SS , p=[-1,3,-8,2 ] ):
 
+        SS_IDX = self.SUBSETS.index(SS)
+        DPA = self.DPA[SS_IDX]
+        DPA_ERR = self.DPA_ERR[SS_IDX]
+        NOBS = self.NOBS[SS_IDX]
+        DES_MTX = self.DES_MTX[SS_IDX]
         def lnlike( params ):
-            l10_EFAC , l10_EQUAD , K = params
+            l10_EFAC , l10_EQUAD  = params
             EFAC = 10**l10_EFAC
             EQUAD = 10**l10_EQUAD
             DPA_ERR_NEW_SQ = ( EFAC * DPA_ERR )**2 + EQUAD**2
-            DPA_NEW = DPA - K * TOA_yr
+            DPA_ERR_NEW = np.sqrt( DPA_ERR_NEW_SQ )
 
-            DPA0 = ( DPA_NEW / DPA_ERR_NEW_SQ ).sum() / ( 1 / DPA_ERR_NEW_SQ ).sum()
-            lnl = - 0.5*np.sum( (DPA_NEW - DPA0)**2 / DPA_ERR_NEW_SQ ) - 0.5*np.sum( np.log( DPA_ERR_NEW_SQ ) ) - CONST
-            return lnl
+            # original likelihood
+            DPA_whiten = DPA / DPA_ERR_NEW
+            lnl_original = - 0.5 * np.sum( DPA_whiten**2  ) - 0.5 * np.sum( np.log( DPA_ERR_NEW_SQ ) ) -  0.5  * np.log(2*np.pi) * NOBS
+
+            # after marginalization
+            if type(DES_MTX) == np.ndarray:
+                DES_MTX_whiten = DES_MTX / DPA_ERR_NEW[None,:]
+                MCM =  DES_MTX_whiten @ DES_MTX_whiten.T
+                MCM_inv , MCM_logdet = svd_inv( MCM )
+
+                DPA_DES = DPA_whiten @ DES_MTX_whiten.T
+                lnl_marginalized = 0.5 * DPA_DES @ MCM_inv @ DPA_DES.T - 0.5 * MCM_logdet +  0.5  * np.log(2*np.pi) * len(DES_MTX)
+            else:
+                lnl_marginalized = 0.
+
+            return lnl_original + lnl_marginalized
+            
         
 
         l10_EFAC_prior,l10_EFAC_prior_sampler = priors.gen_uniform_lnprior(p[0],p[1])
         l10_EQUAD_prior,l10_EQUAD_sampler = priors.gen_uniform_lnprior(p[2],p[3])
-        K_prior , K_sampler = priors.gen_uniform_lnprior(p[4],p[5] )
         
         def lnprior( params ):
-            l10_EFAC , l10_EQUAD , K = params
-            return l10_EFAC_prior(l10_EFAC)  + l10_EQUAD_prior(l10_EQUAD) + K_prior(K)
+            l10_EFAC , l10_EQUAD  = params
+            return l10_EFAC_prior(l10_EFAC)  + l10_EQUAD_prior(l10_EQUAD) 
         
         def init_gen():
-            init = np.array( [l10_EFAC_prior_sampler() , l10_EQUAD_sampler() , K_sampler()] )
+            init = np.array( [l10_EFAC_prior_sampler() , l10_EQUAD_sampler()] )
             return init
 
         return lnlike,lnprior,init_gen
@@ -157,18 +195,17 @@ class Pulsar():
 
 
 #=========================================================#
-#    For an list of "Pulsar" project, make an array       #
+#    For an list of "Pulsar" objects, make an array       #
 #=========================================================#
 
 class Array():
 
-    def __init__(self , Pulsars):
+    def __init__( self , Pulsars  ):
 
         # Rearrange subsets
         self.PSR_NAMES = [ psr.PSR_NAME for psr in Pulsars ]
         self.NPSR = len(Pulsars)
         self.SUBSETS = [ psr.SUBSETS for psr in Pulsars ]
-        #self.NSUBSETS = [ len(SUBSETS) for SUBSETS in self.SUBSETS]
         self.NOBS = [ psr.NOBS for psr in Pulsars]
         self.NOBS_TOTAL = np.sum([ np.sum(NOBS) for NOBS in self.NOBS ])
         
@@ -177,9 +214,11 @@ class Array():
         self.sDTE_LNPRIOR = [psr.DTE_LNPRIOR for psr in Pulsars]
         self.PSR_LOC = np.array( [psr.PSR_LOC for psr in Pulsars] )
 
-        self.TOA = np.array([psr.TOA for psr in Pulsars],dtype=np.ndarray)
-        self.DPA = np.array([psr.DPA for psr in Pulsars],dtype=np.ndarray)
-        self.DPA_ERR = np.array([psr.DPA_ERR for psr in Pulsars],dtype=np.ndarray)
+        self.TOA = [psr.TOA for psr in Pulsars]
+        self.DPA = [psr.DPA for psr in Pulsars]
+        self.DPA_ERR = [psr.DPA_ERR for psr in Pulsars]
+        #self.DES_MTX = np.array( [ psr.DES_MTX for psr in Pulsars ] , dtype=np.ndarray )
+        self.DES_MTX = [ psr.DES_MTX for psr in Pulsars ] 
 
 
         self.NSUBSETS_by_SS = [ len(SUBSETS) for SUBSETS in self.SUBSETS]
@@ -284,7 +323,6 @@ class Array():
     def Load_bestfit_params(self):
         l10_EFAC = []
         l10_EQUAD = []
-        K = []
 
         with open("Parfile/spa_results.json",'r') as f:
             spa_results = json.load(f)
@@ -295,9 +333,8 @@ class Array():
 
                 l10_EFAC.append(spa_results[PSR_NAME][S][0])
                 l10_EQUAD.append(spa_results[PSR_NAME][S][1])
-                K.append(spa_results[PSR_NAME][S][2])
 
-        return np.array(l10_EFAC) , np.array(l10_EQUAD), np.array(K)
+        return np.array(l10_EFAC) , np.array(l10_EQUAD)
     
 
 
@@ -307,7 +344,7 @@ class Array():
     def Gen_White_Mock_Data( self , seed=10):
 
         np.random.seed(seed)
-        l10_EFAC , l10_EQUAD , K = self.Load_bestfit_params()
+        l10_EFAC , l10_EQUAD  = self.Load_bestfit_params()
         EFAC = 10 ** l10_EFAC
         EQUAD = 10 ** l10_EQUAD
  
@@ -363,7 +400,6 @@ class Array():
                 iSS += 1
             DPA[P] = np.array(DPA_P ) 
 
-
         
         return DPA
         
@@ -376,20 +412,16 @@ class Array():
     def Generate_Lnlike_Function( self , method = "Full" ):    
         #type of signal
 
+        DPA_ERR_by_SS = np.array([ x for xs in self.DPA_ERR for x in xs] ,dtype=np.ndarray)
+        DPA_by_SS = [ x for xs in self.DPA for x in xs] 
+        DES_MTX_by_SS = [ x for xs in self.DES_MTX for x in xs] 
+        ORDERS_by_SS = [ len(x) for x in DES_MTX_by_SS ]
+
+        NOBS_TOTAL = self.NOBS_TOTAL
+        ALL_ORDERS = np.sum(ORDERS_by_SS)
         
+        def lnlikelihood( l10_EFAC , l10_EQUAD  , sDTE  , l10_ma , l10_Sa ):
 
-        DPA_ERR_by_SS = np.array( [ x for xs in self.DPA_ERR for x in xs] , dtype="object" )
-        DPA_by_SS = np.array( [ x for xs in self.DPA for x in xs] , dtype="object" )
-        V_by_SS = np.array( [ x/x for xs in self.DPA for x in xs] , dtype="object" )
-        TOA_by_SS = np.array( [ x for xs in self.TOA for x in xs] , dtype="object" )
-
-
-        CONST =  0.5 * self.NOBS_TOTAL * np.log( 2*np.pi )
-
-        
-        def lnlikelihood( l10_EFAC , l10_EQUAD , K , sDTE , vs , l10_ma , l10_Sa ):
-
-            #print(K,sDTE)
             #=============================================#
             #     Mapping Paramaters                      #
             #=============================================#
@@ -409,7 +441,7 @@ class Array():
             #=============================================#
             #     Axion Signal                            #
             #=============================================#
-            _Phi = self.Get_Sigma( vs*1e-3 , ma , sDTE)
+            _Phi = self.Get_Sigma( 1e-3 , ma , sDTE)
             _Phi_Full = np.block( _Phi.tolist() )  
             _Phi_Auto = np.diag( np.diag(_Phi_Full) )
 
@@ -423,79 +455,144 @@ class Array():
             F,F_by_SS = self.Get_F( ma )
             
 
+
             #=============================================#
-            #     For mean value subtraction              #
+            #     For marginalization                     #
             #=============================================#
-            Fx = np.zeros( ( self.NPSR*2,self.NSUBSETS_TOTAL ) )
-            Fv = np.zeros( ( self.NPSR*2,self.NSUBSETS_TOTAL ) )
-            vNx = np.zeros( self.NSUBSETS_TOTAL )
-            vNv = np.zeros( self.NSUBSETS_TOTAL )
-            xNx = np.zeros( self.NSUBSETS_TOTAL ) 
-            FNF = np.zeros( ( self.NPSR*2 , self.NPSR*2 ) )
+
 
             iSS = 0
+            iORDER = 0
+
+            FNF = np.zeros( ( self.NPSR*2 , self.NPSR*2 ) )
+            Fx = np.zeros( ( self.NPSR*2  ) )
+            FM = np.zeros( ( self.NPSR*2 , ALL_ORDERS ) )
+            xNx = np.zeros( self.NSUBSETS_TOTAL ) 
+            MNM = np.zeros( ( ALL_ORDERS , ALL_ORDERS ) )
+            Mx = np.zeros( (ALL_ORDERS ) )
+
             for P in range(self.NPSR):
                 FNF_psr = np.zeros((2,2))
+                Fx_psr = np.zeros(2)
                 for i in range(self.NSUBSETS_by_SS[P]):
-                    NEW_DPA_SS = DPA_by_SS[iSS].astype(np.float64) - K[iSS] * sc.day / sc.year * TOA_by_SS[iSS]
-                    V_SS = V_by_SS[iSS].astype(np.float64)
+
+                    ORDER_SS = ORDERS_by_SS[iSS]
+                    DPA_SS = DPA_by_SS[iSS].astype(np.float64) 
                     F_SS = F_by_SS[iSS].astype(np.float64)
                     sqrt_N_SS = np.sqrt( N_by_SS[iSS].astype(np.float64) )
-
-                    DPA_whiten =  NEW_DPA_SS / sqrt_N_SS
-                    V_whiten   =  V_SS       / sqrt_N_SS
-                    F_whiten   =  F_SS       / sqrt_N_SS[None,:] 
-
-                    FNF_psr +=  F_whiten @ F_whiten.T
-                    Fx[P*2 : P*2+2 , iSS] = F_whiten @ DPA_whiten
-                    Fv[P*2 : P*2+2 , iSS] = F_whiten @ V_whiten
-                    vNx[iSS] =  V_whiten @ DPA_whiten
-                    vNv[iSS] =  V_whiten @ V_whiten
-                    xNx[iSS] =  DPA_whiten @ DPA_whiten
-                    iSS += 1
-                FNF[ P*2 : P*2+2 , P*2 : P*2+2 ] = FNF_psr
-
-            #=============================================#
-            #     Matrix Inversion                        #
-            #=============================================#
+                    M_SS = DES_MTX_by_SS[iSS].astype(np.float64)
                     
-            if l10_ma < -23.4 and method =="Full" :
+ 
+                    DPA_whiten     = DPA_SS     / sqrt_N_SS
+                    F_whiten       = F_SS       / sqrt_N_SS[None,:]
+                    M_whiten       = M_SS       / sqrt_N_SS[None,:]
+
+                    FM[P*2 : P*2+2 , iORDER : iORDER+ORDER_SS ] = F_whiten @ M_whiten.T
+                    MNM[iORDER : iORDER+ORDER_SS,iORDER : iORDER+ORDER_SS] = M_whiten @ M_whiten.T
+                    Mx[iORDER : iORDER+ORDER_SS] = M_whiten @ DPA_whiten
+
+                    xNx[iSS] =  DPA_whiten @ DPA_whiten
+                    FNF_psr +=  F_whiten @ F_whiten.T
+                    Fx_psr += F_whiten @ DPA_whiten
+
+                    iSS += 1
+                    iORDER += ORDER_SS
+
+                FNF[ P*2 : P*2+2 , P*2 : P*2+2 ] = FNF_psr
+                Fx[P*2 : P*2+2 ]                 = Fx_psr
+
+
+            Phi_inv,Phi_logdet = svd_inv(Phi)
+            PhiFNF = Phi_inv + FNF
+            PhiFNF_inv,PhiFNF_logdet = svd_inv(PhiFNF)
             
-                Phi_inv , Phi_logdet = mpmath_inv(Phi)
-                PhiFNF = Phi_inv + FNF
-                PhiFNF_inv , PhiFNF_logdet = mpmath_inv(PhiFNF)
+            MCM = MNM - FM.T @PhiFNF_inv @ FM
+            MCx = Mx -  FM.T @ PhiFNF_inv @ Fx
+            MCM_inv , MCM_logdet = svd_inv(MCM)
             
-            else:
-                try:
-                    Phi_inv,Phi_logdet = svd_inv(Phi)
-                    PhiFNF = Phi_inv + FNF
-                    PhiFNF_inv,PhiFNF_logdet = svd_inv(PhiFNF)
-                except:
-                    Phi_inv , Phi_logdet = mpmath_inv(Phi)
-                    PhiFNF = Phi_inv + FNF
-                    PhiFNF_inv , PhiFNF_logdet = mpmath_inv(PhiFNF) 
 
+            All_logdet = Phi_logdet + PhiFNF_logdet + N_logdet
 
-            vNx = np.diag(vNx)
-            vNv = np.diag(vNv)
-
-            vCx = vNx - Fv.T @ PhiFNF_inv @ Fx
-            vCv = vNv - Fv.T @ PhiFNF_inv @ Fv
-            #vCv_inv = sl.inv(vCv)
-            vCv_inv , vCv_logdet = svd_inv(vCv)
-            x0_mlh = np.sum( vCv_inv @ vCx , axis=1)
-
-            #=============================================#
-            #     The end of Subtraction                  #
-            #=============================================#
+            lnl_original = -0.5 * ( xNx.sum() - Fx.T @ PhiFNF_inv @ Fx ) - 0.5 * All_logdet - 0.5 * np.log( 2*np.pi ) * NOBS_TOTAL
             
-            Sigma_logdet = Phi_logdet + PhiFNF_logdet + N_logdet
-            lnlike_val = -0.5*( xNx.sum() - ( Fx.T @ PhiFNF_inv @ Fx).sum()  - x0_mlh @ vCv @ x0_mlh ) - 0.5*Sigma_logdet - CONST
+            lnl_marginalized = 0.5 * MCx.T @ MCM_inv @ MCx - 0.5 * MCM_logdet  + 0.5 * np.log( 2*np.pi ) * ALL_ORDERS
 
-            if l10_ma < -23.4 and method =="Full":
-                print(lnlike_val)
+
+
+            return lnl_original + lnl_marginalized
+
+
+            # #=============================================#
+            # #     For marginalization                     #
+            # #=============================================#
+            # Fx = np.zeros( ( self.NPSR*2,self.NSUBSETS_TOTAL ) )
+            # Fv = np.zeros( ( self.NPSR*2,self.NSUBSETS_TOTAL ) )
+            # xNx = np.zeros( self.NSUBSETS_TOTAL ) 
+            # FNF = np.zeros( ( self.NPSR*2 , self.NPSR*2 ) )
+
+            # iSS = 0
+            # for P in range(self.NPSR):
+            #     FNF_psr = np.zeros((2,2))
+            #     for i in range(self.NSUBSETS_by_SS[P]):
+            #         DPA_SS = DPA_by_SS[iSS].astype(np.float64) 
+            #         V_SS = V_by_SS[iSS].astype(np.float64)
+            #         F_SS = F_by_SS[iSS].astype(np.float64)
+            #         sqrt_N_SS = np.sqrt( N_by_SS[iSS].astype(np.float64) )
+
+            #         DPA_whiten =  DPA_SS / sqrt_N_SS
+            #         V_whiten   =  V_SS       / sqrt_N_SS
+            #         F_whiten   =  F_SS       / sqrt_N_SS[None,:] 
+
+            #         FNF_psr +=  F_whiten @ F_whiten.T
+            #         Fx[P*2 : P*2+2 , iSS] = F_whiten @ DPA_whiten
+            #         Fv[P*2 : P*2+2 , iSS] = F_whiten @ V_whiten
+            #         vNx[iSS] =  V_whiten @ DPA_whiten
+            #         vNv[iSS] =  V_whiten @ V_whiten
+            #         xNx[iSS] =  DPA_whiten @ DPA_whiten
+            #         iSS += 1
+            #     FNF[ P*2 : P*2+2 , P*2 : P*2+2 ] = FNF_psr
+
+            # #=============================================#
+            # #     Matrix Inversion                        #
+            # #=============================================#
+                    
+            # if l10_ma < -23.4 and method =="Full" :
             
-            return lnlike_val
+            #     Phi_inv , Phi_logdet = mpmath_inv(Phi)
+            #     PhiFNF = Phi_inv + FNF
+            #     PhiFNF_inv , PhiFNF_logdet = mpmath_inv(PhiFNF)
+            
+            # else:
+            #     try:
+            #         Phi_inv,Phi_logdet = svd_inv(Phi)
+            #         PhiFNF = Phi_inv + FNF
+            #         PhiFNF_inv,PhiFNF_logdet = svd_inv(PhiFNF)
+            #     except:
+            #         Phi_inv , Phi_logdet = mpmath_inv(Phi)
+            #         PhiFNF = Phi_inv + FNF
+            #         PhiFNF_inv , PhiFNF_logdet = mpmath_inv(PhiFNF) 
+
+
+            # vNx = np.diag(vNx)
+            # vNv = np.diag(vNv)
+
+            # vCx = vNx - Fv.T @ PhiFNF_inv @ Fx
+            # vCv = vNv - Fv.T @ PhiFNF_inv @ Fv
+            # #vCv_inv = sl.inv(vCv)
+            # vCv_inv , vCv_logdet = svd_inv(vCv)
+            # x0_mlh = np.sum( vCv_inv @ vCx , axis=1)
+
+            # #=============================================#
+            # #     The end of Subtraction                  #
+            # #=============================================#
+            
+            # Sigma_logdet = Phi_logdet + PhiFNF_logdet + N_logdet
+            # lnlike_val = -0.5*( xNx.sum() - ( Fx.T @ PhiFNF_inv @ Fx).sum()  - x0_mlh @ vCv @ x0_mlh ) - 0.5*Sigma_logdet - CONST * NOBS_TOTAL
+
+            # if l10_ma < -23.4 and method =="Full":
+            #     print(lnlike_val)
+            
+            # return lnlike_val
 
 
 

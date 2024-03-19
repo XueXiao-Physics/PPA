@@ -86,13 +86,11 @@ def Mapper(params):
 
     l10_EFAC = params[:NSS]
     l10_EQUAD = params[NSS:2*NSS]
-    K = params[2*NSS:3*NSS]
-    sDTE = params[3*NSS : 3*NSS+NPSR]
-    v = params[3*NSS+NPSR ]
-    l10_ma = params[3*NSS+NPSR + 1]
-    l10_Sa = params[3*NSS+NPSR + 2]
+    sDTE = params[2*NSS : 2*NSS+NPSR]
+    l10_ma = params[2*NSS+NPSR ]
+    l10_Sa = params[2*NSS+NPSR + 1]
 
-    return l10_EFAC , l10_EQUAD , K, sDTE , v , l10_ma , l10_Sa
+    return l10_EFAC , l10_EQUAD ,  sDTE  , l10_ma , l10_Sa
 
 
 #=====================================================#
@@ -116,24 +114,20 @@ def lnlike_sig1( params ):
 
 l10_EFAC_lp , l10_EFAC_sp = priors.gen_uniform_lnprior(-1,3)
 l10_EQUAD_lp , l10_EQUAD_sp = priors.gen_uniform_lnprior(-8,2)
-K_lp , K_sp = priors.gen_uniform_lnprior(-0.05,0.05)
 sDTE_lp = array.sDTE_LNPRIOR
-v_lp , v_sp = priors.gen_uniform_lnprior(0.9,1.1)
 l10_ma_lp , l10_ma_sp = priors.gen_uniform_lnprior(args.lma_min,args.lma_max)
 l10_Sa_lp , l10_Sa_sp = priors.gen_uniform_lnprior(-8,2)
 
 def lnprior_nonmodel( params ):
-    l10_EFAC , l10_EQUAD , K , sDTE , v , l10_ma , l10_Sa =  Mapper( params )
+    l10_EFAC , l10_EQUAD ,  sDTE , l10_ma , l10_Sa =  Mapper( params )
 
     LP_1 = np.sum( [l10_EFAC_lp(l10_EFAC[i]) for i in range(NSS)] )
     LP_2 = np.sum( [l10_EQUAD_lp(l10_EQUAD[i]) for i in range(NSS)] )
-    LP_3 = np.sum( [K_lp(K[i]) for i in range(NSS)])
-    LP_4 = np.sum(  [sDTE_lp[i](sDTE[i]) for i in range(NPSR)]  )
-    LP_5 = v_lp( v )
-    LP_6 = l10_ma_lp( l10_ma )
-    LP_7 = l10_Sa_lp( l10_Sa ) 
+    LP_3 = np.sum(  [sDTE_lp[i](sDTE[i]) for i in range(NPSR)]  )
+    LP_4 = l10_ma_lp( l10_ma )
+    LP_5 = l10_Sa_lp( l10_Sa ) 
     #print(LP_1,LP_2,LP_3,LP_4,LP_5,LP_6)
-    return  np.sum([LP_1,LP_2,LP_3,LP_4,LP_5,LP_6,LP_7])
+    return  np.sum([LP_1,LP_2,LP_3,LP_4,LP_5])
 
 
 
@@ -181,14 +175,14 @@ def lnprior( all_params ):
 
 
 def get_init():
-    l10_EFAC_bf , l10_EQUAD_bf , K_bf = array.Load_bestfit_params( )
+    l10_EFAC_bf , l10_EQUAD_bf = array.Load_bestfit_params( )
     #l10_EFAC_bf += np.random.rand(len(l10_EFAC_bf))- 0.5
     #l10_EQUAD_bf += np.random.rand(len(l10_EQUAD_bf))- 0.5
     #K_bf += np.random.rand(len(K_bf)) * 0.001
     sDTE = np.random.rand(len(ones))*0.1 + 1 - 0.05
     
 
-    init_val = [nmodel_sp()] +[l10_EFAC_sp() for i in range(NSS)] + [l10_EQUAD_sp() for i in range(NSS)] + [K_sp() for i in range(NSS)]  + sDTE.tolist() + [v_sp()] + [l10_ma_sp()] + [l10_Sa_sp()]
+    init_val = [nmodel_sp()] +[l10_EFAC_sp() for i in range(NSS)] + [l10_EQUAD_sp() for i in range(NSS)]   + sDTE.tolist()  + [l10_ma_sp()] + [l10_Sa_sp()]
     #init_val = [nmodel_sp()] + l10_EFAC_bf.tolist() + l10_EQUAD_bf.tolist() + K_bf.tolist() + sDTE.tolist() + [v_sp()] + [l10_ma_sp()] + [l10_Sa_sp()]
     return np.array(init_val)
         
@@ -218,8 +212,8 @@ name = predir + tag +  f"/bin_{args.lma_min:.2f}_{args.lma_max:.2f}"
 init = get_init()
 print( lnlike(init))
 
-groups = [np.arange(len(init)) , [0, 3*NSS+NPSR+1 , 3*NSS+NPSR + 2 , 3*NSS+NPSR + 3  ]]
-groups += [[i,i+NSS,i+2*NSS,i+3*NSS] for i in range(NSS)]
+groups = [np.arange(len(init)) , [0, 2*NSS+NPSR+1 , 2*NSS+NPSR + 2  ]]
+groups += [[i+1,i+1+NSS,i+1+2*NSS] for i in range(NSS)]
 cov = np.diag(np.ones(len(init)))
 sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=False, outDir = name )
 sampler.sample(np.array(init),5000000,thin=100)
