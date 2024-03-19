@@ -5,15 +5,16 @@ import os
 #dlnprior = float(sys.argv[2])
 
 
-method = "auto"
+mock_method = "data"
 mock_lma = -22.5
 mock_lSa = -1
-dlnprior = "\" inf\""
+dlnprior = "\" -inf\""
+order = "1"
 for lma_idx in range(5,56):
     lma_mid = -24.00 + float(lma_idx)*0.1
     lma_min = lma_mid-0.05
     lma_max = lma_mid+0.05
-    os.system("python run_one.py -mock "+method+\
+    os.system("python run_one.py -mock_method "+mock_method+ f" -order {order}"+\
             f" -mock_lma {mock_lma:.2f} -mock_lSa {mock_lSa:.2f}\
             -lma_min {lma_min:.2f} -lma_max {lma_max:.2f}\
             -dlnprior  " + dlnprior +" &")

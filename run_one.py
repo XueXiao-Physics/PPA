@@ -26,9 +26,10 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument("-lma_min", action="store" , type=float , required=True )
 parser.add_argument("-lma_max", action="store" , type=float , required=True )
+parser.add_argument("-order" , action="store", type=int , default="2" )
 parser.add_argument("-dlnprior" , action = "store" , type = float , default="0" )
 
-parser.add_argument("-mock" , choices=["none" , "white" , "auto" ,"data"] , default="data")
+parser.add_argument("-mock_method" , choices=["none" , "white" , "auto" ,"data"] , default="data")
 parser.add_argument("-mock_lma" , action = "store" , type = float )
 parser.add_argument("-mock_lSa" , action = "store" , type = float )
 args = parser.parse_args()
@@ -39,7 +40,7 @@ args = parser.parse_args()
 
 
 PSR_DICT = ppa.Load_Pulsars()
-pulsars = [ppa.Pulsar(PSR_DICT[psrn]) for psrn in PSR_DICT ]
+pulsars = [ppa.Pulsar(PSR_DICT[psrn],order=args.order) for psrn in PSR_DICT ]
 #pulsars = [pulsars[i] for i in [0,1,3,5,6,7,9,10,11,12,13,14,15,17,18,19,20]]
 
 
@@ -50,17 +51,17 @@ PSR_NAME_LIST = [psr.PSR_NAME for psr in pulsars]
 #    Construct the array                              #
 #=====================================================#
 
-tag = args.mock
+tag = args.mock_method
 array = ppa.Array(pulsars)
-if args.mock == "white":
+if args.mock_method == "white":
     array.DPA = array.Gen_White_Mock_Data()
     print("Data replaced by mock data using the redefined measurement error.")
-elif args.mock == "auto":
+elif args.mock_method == "auto":
     array.DPA = array.Gen_Red_Mock_Data("auto",args.mock_lma , args.mock_lSa)
     print("Data replaced by mock data using the redefined measurement error.")
     print("Additional Red noise added: lma=%.1f, lSa=%.1f"%(args.mock_lma,args.mock_lSa), ". Method: " + "auto")
     tag += "_%.1f_%.1f"%(args.mock_lma,args.mock_lSa)
-elif args.mock == "full":
+elif args.mock_method == "full":
     array.DPA = array.Gen_Red_Mock_Data("full",args.mock_lma , args.mock_lSa)
     print("Data replaced by mock data using the redefined measurement error.")
     print("Additional Red noise added: lma=%.1f, lSa=%.1f"%(args.mock_lma,args.mock_lSa), ". Method: " + "auto")
@@ -75,7 +76,7 @@ lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Full" )
 NSS = np.sum( array.NSUBSETS_by_SS )
 NPSR = array.NPSR
 
-tag += f"_dlp_{args.dlnprior:.0f}_Np{NPSR}_Ns{NSS}"
+tag += f"_dlp_{args.dlnprior:.0f}_O{args.order}_Np{NPSR}_Ns{NSS}"
 print(tag)
 
 
