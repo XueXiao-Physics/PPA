@@ -493,7 +493,7 @@ class Array():
 
                     xNx[iSS] =  DPA_whiten @ DPA_whiten
                     FNF_psr +=  F_whiten @ F_whiten.T
-                    Fx_psr += F_whiten @ DPA_whiten
+                    Fx_psr  += F_whiten @ DPA_whiten
 
                     iSS += 1
                     iORDER += ORDER_SS

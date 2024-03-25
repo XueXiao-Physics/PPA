@@ -27,31 +27,39 @@ parser = argparse.ArgumentParser(
 parser.add_argument("-lma_min", action="store" , type=float , required=True )
 parser.add_argument("-lma_max", action="store" , type=float , required=True )
 parser.add_argument("-order" , action="store", type=int , default="2" )
-parser.add_argument("-dlnprior" , action = "store" , type = float , default="0" )
+parser.add_argument("-dlnprior" , action = "store" , type = int , default="0" )
 
 parser.add_argument("-mock_method" , choices=["none" , "white" , "auto" ,"data"] , default="data")
 parser.add_argument("-mock_lma" , action = "store" , type = float )
 parser.add_argument("-mock_lSa" , action = "store" , type = float )
+parser.add_argument("-pulsar"   , action = "store" , type = int )
 args = parser.parse_args()
 
 #=====================================================#
 #    Load the pulsars                                 #
 #=====================================================#
-
+tag = args.mock_method
+tag += f"_d{args.dlnprior}_O{args.order}_"
 
 PSR_DICT = ppa.Load_Pulsars()
 pulsars = [ppa.Pulsar(PSR_DICT[psrn],order=args.order) for psrn in PSR_DICT ]
-#pulsars = [pulsars[i] for i in [0,1,3,5,6,7,9,10,11,12,13,14,15,17,18,19,20]]
-
-
 PSR_NAME_LIST = [psr.PSR_NAME for psr in pulsars]
+if type(args.pulsar) == int : 
+    
+    pulsars = [pulsars[args.pulsar]]
+    tag += pulsars[0].PSR_NAME + '_'
+
+else:
+    pulsars = pulsars
+print(len(pulsars))
+
 
 
 #=====================================================#
 #    Construct the array                              #
 #=====================================================#
 
-tag = args.mock_method
+
 array = ppa.Array(pulsars)
 if args.mock_method == "white":
     array.DPA = array.Gen_White_Mock_Data()
@@ -76,7 +84,7 @@ lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Full" )
 NSS = np.sum( array.NSUBSETS_by_SS )
 NPSR = array.NPSR
 
-tag += f"_dlp_{args.dlnprior:.0f}_O{args.order}_Np{NPSR}_Ns{NSS}"
+tag += f"Np{NPSR}_Ns{NSS}"
 print(tag)
 
 
