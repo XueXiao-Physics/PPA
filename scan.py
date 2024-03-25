@@ -8,9 +8,9 @@ import os
 mock_method = "data"
 mock_lma = -22.5
 mock_lSa = -1
-dlnprior = "\" -inf\""
-order = "1"
-for lma_idx in range(5,56):
+dlnprior = "\" -1\""
+order = "2"
+for lma_idx in [5,6]:#[10,11,12]:#[8,9,10,11,12,13,15]:#range(5,56):
     lma_mid = -24.00 + float(lma_idx)*0.1
     lma_min = lma_mid-0.05
     lma_max = lma_mid+0.05
