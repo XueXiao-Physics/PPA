@@ -39,7 +39,7 @@ def mpmath_inv(M):
 #=========================================================#
 #    Load the information of all available pulsars        #
 #=========================================================#
-def Load_Pulsars():
+def Load_All_Pulsar_Info():
 
     with open("Parfile/par.txt",'r') as f:
         lines = f.readlines()
@@ -74,9 +74,12 @@ def Load_Pulsars():
 
             # Find subsets
             Data_Files = glob.glob("Data/"+psr+"_*.txt")
-            Band_Names = [ f.split("/")[1].split("_")[1].split(".")[0]  for f in Data_Files]
-            DATA = { Band_Names[i]:Data_Files[i] for i in range(len(Data_Files)) }
+            RM_Files = glob.glob("ionFR_correction/"+psr+"_ionFR_*.txt")
+            Band_Names_DATA = [ f.split("/")[1].split("_")[1].split(".")[0]  for f in Data_Files]
+            DATA = { Band_Names_DATA[i]:Data_Files[i] for i in range(len(Data_Files)) }
 
+            Band_Names_RM = [ f.split("/")[1].split("_")[2].split(".")[0]  for f in RM_Files]
+            RM = { Band_Names_RM[i]:RM_Files[i] for i in range(len(RM_Files)) }
             param_dict.update({psr:
                 {"PSR":psr,
                 "RAJ":RA,
@@ -84,7 +87,8 @@ def Load_Pulsars():
                 "DTE_DM":DTE_DM,
                 "PX":PX,
                 "PX_ERR":PX_ERR,
-                "DATA":DATA
+                "DATA":DATA,
+                "RM":RM
                 }})
 
         return param_dict
@@ -95,7 +99,7 @@ def Load_Pulsars():
 #=========================================================#
 class Pulsar():
 
-    def __init__( self, PSR_DICT , order = 2 ):
+    def __init__( self, PSR_DICT , order=None , iono=None ):
         self.PSR_NAME = PSR_DICT["PSR"]
         #self.import_psr()
 
@@ -108,22 +112,51 @@ class Pulsar():
         self.DPA_ERR = []
         self.NOBS = []
         self.DES_MTX = []
+        self.RM = []
+        self.RM_ERR = []
+        self.WAVE_LENGTH = []
+
         for SS in self.SUBSETS:
             TOA , DPA , DPA_ERR = np.loadtxt( PSR_DICT["DATA"][SS] )
+            RM , RM_ERR = np.loadtxt( PSR_DICT["RM"][SS] )
             NOBS = len(TOA)
-            if order in [0 , 1 , 2 ]:
-                #print("subtraction order: %i"%order)
+            if order in [ 0 , 1 , 2 ]:
                 DES_MTX = self.get_design_matrix( TOA , order =  order )
             else:
-                #print("subtraction order: None")
-                DES_MTX = None
+                print("ISM marginalizasion order: 0, 1 or 2")
+                raise
 
 
             self.TOA.append(TOA-TREF)
-            self.DPA.append(DPA)
-            self.DPA_ERR.append(DPA_ERR)
             self.NOBS.append(NOBS)
             self.DES_MTX.append(DES_MTX)
+            self.RM.append(RM)
+            self.RM_ERR.append(RM_ERR)
+            if SS == "10cm":
+                WAVE_LENGTH = 0.1
+                self.WAVE_LENGTH.append(WAVE_LENGTH)
+            elif SS == "20cm":
+                WAVE_LENGTH = 0.2
+                self.WAVE_LENGTH.append(WAVE_LENGTH)
+            else:
+                print("unknown subset:",SS)
+                raise
+
+            if iono == "None":
+                self.DPA.append(DPA)
+                self.DPA_ERR.append(DPA_ERR)
+            elif iono == "Subt":
+                self.DPA.append( DPA + WAVE_LENGTH**2 * RM )
+                self.DPA_ERR.append( np.sqrt( DPA_ERR**2 + RM_ERR**2 * WAVE_LENGTH**4 ) )
+            elif iono == "Vary":
+                self.DPA.append(DPA)
+                self.DPA_ERR.append(DPA_ERR)
+                # the RM info is only available in thiscase
+                self.RM.append(RM)
+                self.RM_ERR.append(RM_ERR)
+            else:
+                raise
+
 
 
     
@@ -163,20 +196,17 @@ class Pulsar():
             lnl_original = - 0.5 * np.sum( DPA_whiten**2  ) - 0.5 * np.sum( np.log( DPA_ERR_NEW_SQ ) ) -  0.5  * np.log(2*np.pi) * NOBS
 
             # after marginalization
-            if type(DES_MTX) == np.ndarray:
-                DES_MTX_whiten = DES_MTX / DPA_ERR_NEW[None,:]
-                MCM =  DES_MTX_whiten @ DES_MTX_whiten.T
-                MCM_inv , MCM_logdet = svd_inv( MCM )
 
-                DPA_DES = DPA_whiten @ DES_MTX_whiten.T
-                lnl_marginalized = 0.5 * DPA_DES @ MCM_inv @ DPA_DES.T - 0.5 * MCM_logdet +  0.5  * np.log(2*np.pi) * len(DES_MTX)
-            else:
-                lnl_marginalized = 0.
+            DES_MTX_whiten = DES_MTX / DPA_ERR_NEW[None,:]
+            MCM =  DES_MTX_whiten @ DES_MTX_whiten.T
+            MCM_inv , MCM_logdet = svd_inv( MCM )
+
+            DPA_DES = DPA_whiten @ DES_MTX_whiten.T
+            lnl_marginalized = 0.5 * DPA_DES @ MCM_inv @ DPA_DES.T - 0.5 * MCM_logdet +  0.5  * np.log(2*np.pi) * len(DES_MTX)
+
 
             return lnl_original + lnl_marginalized
             
-        
-
         l10_EFAC_prior,l10_EFAC_prior_sampler = priors.gen_uniform_lnprior(p[0],p[1])
         l10_EQUAD_prior,l10_EQUAD_sampler = priors.gen_uniform_lnprior(p[2],p[3])
         

@@ -33,16 +33,20 @@ parser.add_argument("-mock_method" , choices=["none" , "white" , "auto" ,"data"]
 parser.add_argument("-mock_lma" , action = "store" , type = float )
 parser.add_argument("-mock_lSa" , action = "store" , type = float )
 parser.add_argument("-pulsar"   , action = "store" , type = int )
+parser.add_argument("-iono"     , choices=["None","Subt"] , required=True)
 args = parser.parse_args()
 
 #=====================================================#
 #    Load the pulsars                                 #
 #=====================================================#
 tag = args.mock_method
-tag += f"_d{args.dlnprior}_O{args.order}_"
+tag += f"_d{args.dlnprior}_O{args.order}_i" + args.iono + "_"
 
-PSR_DICT = ppa.Load_Pulsars()
-pulsars = [ppa.Pulsar(PSR_DICT[psrn],order=args.order) for psrn in PSR_DICT ]
+PSR_DICT = ppa.Load_All_Pulsar_Info()
+
+pulsars = [ ppa.Pulsar( PSR_DICT[psrn] , order = args.order , iono = args.iono ) for psrn in PSR_DICT ]
+
+
 PSR_NAME_LIST = [psr.PSR_NAME for psr in pulsars]
 if type(args.pulsar) == int : 
     
