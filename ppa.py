@@ -492,14 +492,14 @@ class Array():
 
 
             iSS = 0
-            iORDER = 0
+            iPAR = 0
 
             FNF = np.zeros( ( self.NPSR*2 , self.NPSR*2 ) )
-            Fx = np.zeros( ( self.NPSR*2  ) )
-            FM = np.zeros( ( self.NPSR*2 , ALL_ORDERS ) )
-            xNx = np.zeros( self.NSUBSETS_TOTAL ) 
+            Fx  = np.zeros( ( self.NPSR*2  ) )
+            FM  = np.zeros( ( self.NPSR*2 , ALL_ORDERS ) )
             MNM = np.zeros( ( ALL_ORDERS , ALL_ORDERS ) )
-            Mx = np.zeros( (ALL_ORDERS ) )
+            Mx  = np.zeros( ( ALL_ORDERS ) )
+            xNx = 0
 
             for P in range(self.NPSR):
                 FNF_psr = np.zeros((2,2))
@@ -517,25 +517,26 @@ class Array():
                     F_whiten       = F_SS       / sqrt_N_SS[None,:]
                     M_whiten       = M_SS       / sqrt_N_SS[None,:]
 
-                    FM[P*2 : P*2+2 , iORDER : iORDER+ORDER_SS ] = F_whiten @ M_whiten.T
-                    MNM[iORDER : iORDER+ORDER_SS,iORDER : iORDER+ORDER_SS] = M_whiten @ M_whiten.T
-                    Mx[iORDER : iORDER+ORDER_SS] = M_whiten @ DPA_whiten
+                    FM[P*2 : P*2+2 , iPAR : iPAR+ORDER_SS ] = F_whiten @ M_whiten.T
+                    MNM[iPAR : iPAR+ORDER_SS,iPAR : iPAR+ORDER_SS] = M_whiten @ M_whiten.T
+                    Mx[iPAR : iPAR+ORDER_SS] = M_whiten @ DPA_whiten
 
-                    xNx[iSS] =  DPA_whiten @ DPA_whiten
+                    xNx     +=  DPA_whiten @ DPA_whiten
                     FNF_psr +=  F_whiten @ F_whiten.T
-                    Fx_psr  += F_whiten @ DPA_whiten
+                    Fx_psr  +=  F_whiten @ DPA_whiten
 
                     iSS += 1
                     iORDER += ORDER_SS
 
                 FNF[ P*2 : P*2+2 , P*2 : P*2+2 ] = FNF_psr
-                Fx[P*2 : P*2+2 ]                 = Fx_psr
+                Fx[  P*2 : P*2+2 ]               = Fx_psr
 
 
             Phi_inv,Phi_logdet = svd_inv(Phi)
             PhiFNF = Phi_inv + FNF
             PhiFNF_inv,PhiFNF_logdet = svd_inv(PhiFNF)
             
+            xCx = xNx - Fx.T @ PhiFNF_inv @ Fx
             MCM = MNM - FM.T @PhiFNF_inv @ FM
             MCx = Mx -  FM.T @ PhiFNF_inv @ Fx
             MCM_inv , MCM_logdet = svd_inv(MCM)
@@ -543,7 +544,7 @@ class Array():
 
             All_logdet = Phi_logdet + PhiFNF_logdet + N_logdet
 
-            lnl_original = -0.5 * ( xNx.sum() - Fx.T @ PhiFNF_inv @ Fx ) - 0.5 * All_logdet - 0.5 * np.log( 2*np.pi ) * NOBS_TOTAL
+            lnl_original = -0.5 * xCx - 0.5 * All_logdet - 0.5 * np.log( 2*np.pi ) * NOBS_TOTAL
             
             lnl_marginalized = 0.5 * MCx.T @ MCM_inv @ MCx - 0.5 * MCM_logdet  + 0.5 * np.log( 2*np.pi ) * ALL_ORDERS
 
