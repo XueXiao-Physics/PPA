@@ -526,7 +526,7 @@ class Array():
                     Fx_psr  +=  F_whiten @ DPA_whiten
 
                     iSS += 1
-                    iORDER += ORDER_SS
+                    iPAR += ORDER_SS
 
                 FNF[ P*2 : P*2+2 , P*2 : P*2+2 ] = FNF_psr
                 Fx[  P*2 : P*2+2 ]               = Fx_psr
