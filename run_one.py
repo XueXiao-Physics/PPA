@@ -27,7 +27,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument("-lma_min", action="store" , type=float , required=True )
 parser.add_argument("-lma_max", action="store" , type=float , required=True )
 parser.add_argument("-order" , action="store", type=int , default="2" )
-parser.add_argument("-dlnprior" , action = "store" , type = int , default="0" )
+parser.add_argument("-dlnprior" , action = "store" , type = float , default="0" )
 
 parser.add_argument("-mock_method" , choices=["none" , "white" , "auto" ,"data"] , default="data")
 parser.add_argument("-mock_lma" , action = "store" , type = float )
@@ -40,7 +40,7 @@ args = parser.parse_args()
 #    Load the pulsars                                 #
 #=====================================================#
 tag = args.mock_method
-tag += f"_d{args.dlnprior}_O{args.order}_i" + args.iono + "_"
+tag += f"_d{args.dlnprior:.0f}_O{args.order}_i" + args.iono + "_"
 
 PSR_DICT = ppa.Load_All_Pulsar_Info()
 
