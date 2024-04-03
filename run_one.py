@@ -34,17 +34,18 @@ parser.add_argument("-mock_lma" , action = "store" , type = float )
 parser.add_argument("-mock_lSa" , action = "store" , type = float )
 parser.add_argument("-pulsar"   , action = "store" , type = int )
 parser.add_argument("-iono"     , choices=["None","Subt"] , required=True)
+parser.add_argument("-subset"  , choices=["10cm","20cm","All"] , default="All" , required=True)
 args = parser.parse_args()
 
 #=====================================================#
 #    Load the pulsars                                 #
 #=====================================================#
 tag = args.mock_method
-tag += f"_d{args.dlnprior:.0f}_O{args.order}_i" + args.iono + "_"
+tag += f"_d{args.dlnprior:.0f}_O{args.order}_i" + args.iono + "_" + args.subset + "_"
 
 PSR_DICT = ppa.Load_All_Pulsar_Info()
 
-pulsars = [ ppa.Pulsar( PSR_DICT[psrn] , order = args.order , iono = args.iono ) for psrn in PSR_DICT ]
+pulsars = [ ppa.Pulsar( PSR_DICT[psrn] , order = args.order , iono = args.iono , subset=args.subset ) for psrn in PSR_DICT ]
 
 
 PSR_NAME_LIST = [psr.PSR_NAME for psr in pulsars]
@@ -88,8 +89,8 @@ lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Full" )
 NSS = np.sum( array.NSUBSETS_by_SS )
 NPSR = array.NPSR
 
-tag += f"Np{NPSR}_Ns{NSS}"
-print(tag)
+#tag += f"Np{NPSR}_Ns{NSS}"
+#print(tag)
 
 
 #=====================================================#
@@ -226,7 +227,20 @@ init = get_init()
 print( lnlike(init))
 
 groups = [np.arange(len(init)) , [0, 2*NSS+NPSR+1 , 2*NSS+NPSR + 2  ]]
-groups += [[i+1,i+1+NSS,i+1+2*NSS] for i in range(NSS)]
+
+iss = 1
+groups = []
+for ipsr in range(NPSR):
+    g = []
+    nss = len( array.SUBSETS[ipsr] )
+    g += np.arange(iss,iss+nss).tolist()
+    g += np.arange(iss+NSS,iss+nss+NSS).tolist()
+    g += [1+2*NSS+ipsr]
+    iss += nss
+    groups.append(g)
+
+
+#groups += [[i+1,i+1+NSS] for i in range(NSS)]
 cov = np.diag(np.ones(len(init)))
 sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=False, outDir = name )
 sampler.sample(np.array(init),5000000,thin=100)

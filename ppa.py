@@ -73,8 +73,8 @@ def Load_All_Pulsar_Info():
                 PX_ERR = np.nan
 
             # Find subsets
-            Data_Files = glob.glob("Data/"+psr+"_*.txt")
-            RM_Files = glob.glob("ionFR_correction/"+psr+"_ionFR_*.txt")
+            Data_Files = sorted(glob.glob("Data/"+psr+"_*.txt"))
+            RM_Files = sorted(glob.glob("ionFR_correction/"+psr+"_ionFR_*.txt"))
             Band_Names_DATA = [ f.split("/")[1].split("_")[1].split(".")[0]  for f in Data_Files]
             DATA = { Band_Names_DATA[i]:Data_Files[i] for i in range(len(Data_Files)) }
 
@@ -99,14 +99,32 @@ def Load_All_Pulsar_Info():
 #=========================================================#
 class Pulsar():
 
-    def __init__( self, PSR_DICT , order=None , iono=None ):
+    def __init__( self, PSR_DICT , order=None , iono=None , subset="All" ):
         self.PSR_NAME = PSR_DICT["PSR"]
         #self.import_psr()
 
         self.DTE0,self.DTE_LNPRIOR = priors.get_DTE( PSR_DICT["DTE_DM"] , PSR_DICT["PX"] , PSR_DICT["PX_ERR"] )
         self.PSR_LOC = priors.get_psr_loc( PSR_DICT["RAJ"] , PSR_DICT["DECJ"] )
 
-        self.SUBSETS = list( PSR_DICT["DATA"].keys() )
+
+
+        #self.SUBSETS = list( PSR_DICT["DATA"].keys() )
+        SUBSETS = list( PSR_DICT["DATA"].keys() )
+        if subset == "All":
+            self.SUBSETS = SUBSETS
+        elif type(subset) == str:
+            if subset in SUBSETS:
+                self.SUBSETS = [subset]
+            else:
+                self.SUBSETS = []
+        elif type(subset) == list:
+            self.SUBSETS = []
+            for ss in subset:
+                if ss in SUBSETS:
+                    self.SUBSETS.append(ss)
+            
+
+
         self.TOA = []
         self.DPA = []
         self.DPA_ERR = []
@@ -142,18 +160,13 @@ class Pulsar():
                 print("unknown subset:",SS)
                 raise
 
+
             if iono == "None":
                 self.DPA.append(DPA)
                 self.DPA_ERR.append(DPA_ERR)
             elif iono == "Subt":
                 self.DPA.append( DPA + WAVE_LENGTH**2 * RM )
                 self.DPA_ERR.append( np.sqrt( DPA_ERR**2 + RM_ERR**2 * WAVE_LENGTH**4 ) )
-            elif iono == "Vary":
-                self.DPA.append(DPA)
-                self.DPA_ERR.append(DPA_ERR)
-                # the RM info is only available in thiscase
-                self.RM.append(RM)
-                self.RM_ERR.append(RM_ERR)
             else:
                 raise
 
@@ -231,6 +244,9 @@ class Pulsar():
 class Array():
 
     def __init__( self , Pulsars  ):
+
+        # elimate all pulsars that have no data
+        Pulsars = [ P for P in Pulsars if len(P.SUBSETS) ]
 
         # Rearrange subsets
         self.PSR_NAMES = [ psr.PSR_NAME for psr in Pulsars ]

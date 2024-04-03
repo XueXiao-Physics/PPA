@@ -13,6 +13,7 @@ mock_lSa = -1
 dlnprior = "\" -8\""
 order = "2"
 iono = "Subt"
+subset = "10cm"
 def run(ipsr=None,Range=range(5,56)):
     for lma_idx in Range:
         lma_mid = -24.00 + float(lma_idx)*0.1
@@ -24,14 +25,15 @@ def run(ipsr=None,Range=range(5,56)):
              + f" -mock_lma {mock_lma:.2f} -mock_lSa {mock_lSa:.2f}"\
              + f" -lma_min {lma_min:.2f} -lma_max {lma_max:.2f}"\
              + f" -dlnprior " + dlnprior\
-             + f" -iono " + iono
+             + f" -iono " + iono\
+             + f" -subset " + subset
         if ipsr ==None:
             pass
         else:
             argument += " -pulsar " + str(ipsr)   
         os.system(argument + " &")
 
-run(Range=range(7,8))
+run()
 #run()
 #for ipsr in range(8,22):
 #    run(ipsr)
