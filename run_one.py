@@ -56,7 +56,7 @@ if type(args.pulsar) == int :
 
 else:
     pulsars = pulsars
-print(len(pulsars))
+#print(len(pulsars))
 
 
 
@@ -89,7 +89,7 @@ lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Full" )
 NSS = np.sum( array.NSUBSETS_by_SS )
 NPSR = array.NPSR
 
-#tag += f"Np{NPSR}_Ns{NSS}"
+tag += f"Np{NPSR}"
 #print(tag)
 
 
