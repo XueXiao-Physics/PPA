@@ -81,7 +81,9 @@ elif args.mock_method == "full":
     print("Data replaced by mock data using the redefined measurement error.")
     print("Additional Red noise added: lma=%.1f, lSa=%.1f"%(args.mock_lma,args.mock_lSa), ". Method: " + "auto")
     tag += "_%.1f_%.1f"%(args.mock_lma,args.mock_lSa)
-else:
+elif args.mock_method == "data":
+    pass
+else: 
     raise
 
 
