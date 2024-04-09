@@ -14,6 +14,7 @@ dlnprior = "\" 0\""
 order = "2"
 iono = "Subt"#"Subt"
 subset = "All"
+bf = "af"
 
 def run(ipsr=None,Range=range(5,56)):
     for lma_idx in Range:
@@ -27,7 +28,8 @@ def run(ipsr=None,Range=range(5,56)):
              + f" -lma_min {lma_min:.2f} -lma_max {lma_max:.2f}"\
              + f" -dlnprior " + dlnprior\
              + f" -iono " + iono\
-             + f" -subset " + subset
+             + f" -subset " + subset\
+             + f" -bf " + bf
         if ipsr ==None:
             pass
         else:
