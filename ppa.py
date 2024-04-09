@@ -495,6 +495,8 @@ class Array():
                 Phi = _Phi_Full * Sa**2
             elif method == "Auto":
                 Phi = _Phi_Auto * Sa**2
+            elif method == "None":
+                Phi = None
             else:
                 raise
 
@@ -547,9 +549,11 @@ class Array():
                 FNF[ P*2 : P*2+2 , P*2 : P*2+2 ] = FNF_psr
                 Fx[  P*2 : P*2+2 ]               = Fx_psr
 
-
-            Phi_inv,Phi_logdet = svd_inv(Phi)
-            PhiFNF = Phi_inv + FNF
+            if Phi == None:
+                PhiFNF = FNF
+            else:
+                Phi_inv,Phi_logdet = svd_inv(Phi)
+                PhiFNF = Phi_inv + FNF
             PhiFNF_inv,PhiFNF_logdet = svd_inv(PhiFNF)
             
             xCx = xNx - Fx.T @ PhiFNF_inv @ Fx

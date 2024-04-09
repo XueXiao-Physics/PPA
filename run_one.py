@@ -34,7 +34,9 @@ parser.add_argument("-mock_lma" , action = "store" , type = float )
 parser.add_argument("-mock_lSa" , action = "store" , type = float )
 parser.add_argument("-pulsar"   , action = "store" , type = int )
 parser.add_argument("-iono"     , choices=["None","Subt"] , required=True)
-parser.add_argument("-subset"  , choices=["10cm","20cm","All"] , default="All" , required=True)
+parser.add_argument("-subset"  , choices=["10cm","20cm","All"] , default = "All" , required=True)
+parser.add_argument("-bf" , choices = ["af" , "na" , "nf"] , default = "af" , required=True)
+
 args = parser.parse_args()
 
 #=====================================================#
@@ -79,16 +81,28 @@ elif args.mock_method == "full":
     print("Data replaced by mock data using the redefined measurement error.")
     print("Additional Red noise added: lma=%.1f, lSa=%.1f"%(args.mock_lma,args.mock_lSa), ". Method: " + "auto")
     tag += "_%.1f_%.1f"%(args.mock_lma,args.mock_lSa)
+else:
+    raise
 
 
 ones = np.ones(array.NPSR)
 zeros = np.zeros(array.NPSR)
-lnlike_sig0_raw = array.Generate_Lnlike_Function( method="Auto" )
-lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Full" )
+if args.bf == "af":
+    lnlike_sig0_raw = array.Generate_Lnlike_Function( method="Auto" )
+    lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Full" )
+elif args.bf == "na":
+    lnlike_sig0_raw = array.Generate_Lnlike_Function( method="None" )
+    lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Auto" )
+elif args.bf == "nf":
+    lnlike_sig0_raw = array.Generate_Lnlike_Function( method="None" )
+    lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Full" )
+else:
+    raise
 
 NSS = np.sum( array.NSUBSETS_by_SS )
 NPSR = array.NPSR
 
+tag += args.bf + "_"
 tag += f"Np{NPSR}"
 #print(tag)
 
