@@ -96,6 +96,7 @@ def gen_uniform_lnprior( a , b ):
         return lnp
     
     def sampler():
+        np.random.seed()
         return np.random.rand()*(b-a) + a
     
     return lnprior, sampler

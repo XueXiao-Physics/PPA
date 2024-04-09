@@ -10,10 +10,11 @@ mock_method = "data"
 mock_lma = -22.5
 mock_lSa = -1
 
-dlnprior = "\" -8\""
+dlnprior = "\" 0\""
 order = "2"
-iono = "Subt"
-subset = "10cm"
+iono = "Subt"#"Subt"
+subset = "All"
+
 def run(ipsr=None,Range=range(5,56)):
     for lma_idx in Range:
         lma_mid = -24.00 + float(lma_idx)*0.1

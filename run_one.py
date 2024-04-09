@@ -229,7 +229,6 @@ print( lnlike(init))
 groups = [np.arange(len(init)) , [0, 2*NSS+NPSR+1 , 2*NSS+NPSR + 2  ]]
 
 iss = 1
-groups = []
 for ipsr in range(NPSR):
     g = []
     nss = len( array.SUBSETS[ipsr] )
