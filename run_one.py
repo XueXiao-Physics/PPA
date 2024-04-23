@@ -19,18 +19,18 @@ parser = argparse.ArgumentParser(
     description="Run Bayesian Analysis of PPA"
 )
 
-parser.add_argument("-lma_min", action="store" , type=float , required=True )
-parser.add_argument("-lma_max", action="store" , type=float , required=True )
-parser.add_argument("-order" , action="store", type=int , default="2" )
+parser.add_argument("-lma_min"  , action="store" , type=float , default="-23.6"  )
+parser.add_argument("-lma_max"  , action="store" , type=float , default="-18.5" )
+parser.add_argument("-order"    , action="store", type=int , default="2" )
 parser.add_argument("-dlnprior" , action = "store" , type = float , default="0" )
 
-parser.add_argument("-mock_method" , choices=["none" , "white" , "auto" ,"data"] , default="data")
-parser.add_argument("-mock_lma" , action = "store" , type = float )
-parser.add_argument("-mock_lSa" , action = "store" , type = float )
-parser.add_argument("-pulsar"   , action = "store" , type = int )
-parser.add_argument("-iono"     , choices=["None","Subt"] , required=True)
-parser.add_argument("-subset"  , choices=["10cm","20cm","All"] , default = "All" , required=True)
-parser.add_argument("-bf" , choices = ["af" , "na" , "nf"] , default = "af" , required=True)
+parser.add_argument("-mock_method" , action = "store", choices=["none" , "white" , "auto" ,"data"] , default="data")
+parser.add_argument("-mock_lma"    , action = "store" , type = float )
+parser.add_argument("-mock_lSa"    , action = "store" , type = float )
+parser.add_argument("-pulsar"      , action = "store" , type = int )
+parser.add_argument("-iono"        , action = "store", choices=["None","Subt"] )
+parser.add_argument("-subset"      , action = "store", choices=["10cm","20cm","All"] , default = "All" )
+parser.add_argument("-bf"          , action = "store", choices = ["af" , "na" , "nf"] , default = "af" )
 
 args = parser.parse_args()
 
@@ -53,7 +53,6 @@ if type(args.pulsar) == int :
 
 else:
     pulsars = pulsars
-#print(len(pulsars))
 
 
 
@@ -151,7 +150,7 @@ def lnprior_nonmodel( params ):
     LP_3 = np.sum(  [sDTE_lp[i](sDTE[i]) for i in range(NPSR)]  )
     LP_4 = l10_ma_lp( l10_ma )
     LP_5 = l10_Sa_lp( l10_Sa ) 
-    
+
     return  np.sum([LP_1,LP_2,LP_3,LP_4,LP_5])
 
 
@@ -206,8 +205,6 @@ def get_init():
     init_val = [nmodel_sp()] +[l10_EFAC_sp() for i in range(NSS)] + [l10_EQUAD_sp() for i in range(NSS)]   + sDTE.tolist()  + [l10_ma_sp()] + [l10_Sa_sp()]
     return np.array(init_val)
         
-
-
 
 
 #=====================================================#
