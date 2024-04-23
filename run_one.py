@@ -38,10 +38,6 @@ args = parser.parse_args()
 #    Load the pulsars                                 #
 #=====================================================#
 tag = args.mock_method
-# print(args.dlnprior)
-# print(args.order)
-# print(args.iono)
-# print(args.subset)
 tag += f"_d{args.dlnprior:.0f}_O{args.order}_i" + args.iono + "_" + args.subset + "_"
 
 PSR_DICT = ppa.Load_All_Pulsar_Info()
