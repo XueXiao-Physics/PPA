@@ -7,16 +7,14 @@ import time
 
 
 mock_method = "data"
-#mock_lma = -22.5
-#mock_lSa = -1
 
-dlnprior = "\" 0\""
+dlnprior = "\" 3\""
 order = "2"
 iono = "subt"#"Subt"
-subset = "all"
-bf = "af"
+subset = "10cm"
+bf = "nf"
 
-def run(ipsr=None,Range=range(5,56)):
+def run(ipsr=-1,Range=range(5,56)):
     for lma_idx in Range:
         lma_mid = -24.00 + float(lma_idx)*0.1
         lma_min = lma_mid-0.05
@@ -24,19 +22,15 @@ def run(ipsr=None,Range=range(5,56)):
         argument = "python run_one.py "\
              + "-mock_method "+mock_method\
              + f" -order {order}"\
-            #  + f" -mock_lma {mock_lma:.2f} -mock_lSa {mock_lSa:.2f}"\
              + f" -lma_min {lma_min:.2f} -lma_max {lma_max:.2f}"\
              + f" -dlnprior " + dlnprior\
              + f" -iono " + iono\
              + f" -subset " + subset\
-             + f" -bf " + bf
-        if ipsr ==None:
-            pass
-        else:
-            argument += " -pulsar " + str(ipsr)   
+             + f" -bf " + bf\
+             +  " -pulsar " + str(ipsr)   
         os.system(argument + " &")
 
-run()
+run( Range = [ 5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 21, 47, 50, 52, 53, 54])
 #run()
 #for ipsr in range(8,22):
 #    run(ipsr=ipsr)

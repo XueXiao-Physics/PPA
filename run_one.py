@@ -49,7 +49,7 @@ PSR_NAME_LIST = [psr.PSR_NAME for psr in pulsars]
 if args.pulsar >= 0 : 
     pulsars = [pulsars[args.pulsar]]
     tag += pulsars[0].PSR_NAME + '_'
-elif args.pulasr == -1:
+elif args.pulsar == -1:
     pulsars = pulsars
 
 
