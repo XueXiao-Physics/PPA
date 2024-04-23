@@ -12,8 +12,8 @@ mock_method = "data"
 
 dlnprior = "\" 0\""
 order = "2"
-iono = "Subt"#"Subt"
-subset = "All"
+iono = "subt"#"Subt"
+subset = "all"
 bf = "af"
 
 def run(ipsr=None,Range=range(5,56)):
@@ -24,7 +24,7 @@ def run(ipsr=None,Range=range(5,56)):
         argument = "python run_one.py "\
              + "-mock_method "+mock_method\
              + f" -order {order}"\
-             #+ f" -mock_lma {mock_lma:.2f} -mock_lSa {mock_lSa:.2f}"\
+            #  + f" -mock_lma {mock_lma:.2f} -mock_lSa {mock_lSa:.2f}"\
              + f" -lma_min {lma_min:.2f} -lma_max {lma_max:.2f}"\
              + f" -dlnprior " + dlnprior\
              + f" -iono " + iono\

@@ -90,7 +90,7 @@ def Load_All_Pulsar_Info():
 #=========================================================#
 class Pulsar():
 
-    def __init__( self, PSR_DICT , order=None , iono=None , subset="All" ):
+    def __init__( self, PSR_DICT , order=None , iono=None , subset="all" ):
         self.PSR_NAME = PSR_DICT["PSR"]
         #self.import_psr()
 
@@ -101,7 +101,7 @@ class Pulsar():
 
         #self.SUBSETS = list( PSR_DICT["DATA"].keys() )
         SUBSETS = list( PSR_DICT["DATA"].keys() )
-        if subset == "All":
+        if subset == "all":
             self.SUBSETS = SUBSETS
         elif type(subset) == str:
             if subset in SUBSETS:
@@ -152,10 +152,10 @@ class Pulsar():
                 raise
 
 
-            if iono == "None":
+            if iono == "none":
                 self.DPA.append(DPA)
                 self.DPA_ERR.append(DPA_ERR)
-            elif iono == "Subt":
+            elif iono == "subt":
                 self.DPA.append( DPA + WAVE_LENGTH**2 * RM )
                 self.DPA_ERR.append( np.sqrt( DPA_ERR**2 + RM_ERR**2 * WAVE_LENGTH**4 ) )
             else:

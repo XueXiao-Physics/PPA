@@ -28,8 +28,8 @@ parser.add_argument("-mock_method" , action = "store", choices=["none" , "white"
 parser.add_argument("-mock_lma"    , action = "store" , type = float )
 parser.add_argument("-mock_lSa"    , action = "store" , type = float )
 parser.add_argument("-pulsar"      , action = "store" , type = int )
-parser.add_argument("-iono"        , action = "store", choices=["None","Subt"] )
-parser.add_argument("-subset"      , action = "store", choices=["10cm","20cm","All"] , default = "All" )
+parser.add_argument("-iono"        , action = "store", choices=["none","subt"] , default='subt')
+parser.add_argument("-subset"      , action = "store", choices=["10cm","20cm","all"] , default = "all" )
 parser.add_argument("-bf"          , action = "store", choices = ["af" , "na" , "nf"] , default = "af" )
 
 args = parser.parse_args()
@@ -38,6 +38,10 @@ args = parser.parse_args()
 #    Load the pulsars                                 #
 #=====================================================#
 tag = args.mock_method
+# print(args.dlnprior)
+# print(args.order)
+# print(args.iono)
+# print(args.subset)
 tag += f"_d{args.dlnprior:.0f}_O{args.order}_i" + args.iono + "_" + args.subset + "_"
 
 PSR_DICT = ppa.Load_All_Pulsar_Info()
@@ -47,10 +51,8 @@ pulsars = [ ppa.Pulsar( PSR_DICT[psrn] , order = args.order , iono = args.iono ,
 
 PSR_NAME_LIST = [psr.PSR_NAME for psr in pulsars]
 if type(args.pulsar) == int : 
-    
     pulsars = [pulsars[args.pulsar]]
     tag += pulsars[0].PSR_NAME + '_'
-
 else:
     pulsars = pulsars
 
@@ -94,7 +96,6 @@ elif args.bf == "nf":
     lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Full" )
 else:
     raise
-
 NSS = np.sum( array.NSUBSETS_by_SS )
 NPSR = array.NPSR
 
