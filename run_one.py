@@ -151,7 +151,7 @@ def lnprior_nonmodel( params ):
     LP_3 = np.sum(  [sDTE_lp[i](sDTE[i]) for i in range(NPSR)]  )
     LP_4 = l10_ma_lp( l10_ma )
     LP_5 = l10_Sa_lp( l10_Sa ) 
-    #print(LP_1,LP_2,LP_3,LP_4,LP_5,LP_6)
+    
     return  np.sum([LP_1,LP_2,LP_3,LP_4,LP_5])
 
 
@@ -200,15 +200,10 @@ def lnprior( all_params ):
 
 
 def get_init():
-    l10_EFAC_bf , l10_EQUAD_bf = array.Load_bestfit_params( )
-    #l10_EFAC_bf += np.random.rand(len(l10_EFAC_bf))- 0.5
-    #l10_EQUAD_bf += np.random.rand(len(l10_EQUAD_bf))- 0.5
-    #K_bf += np.random.rand(len(K_bf)) * 0.001
-    sDTE = np.random.rand(len(ones))*0.1 + 1 - 0.05
-    
 
+    #l10_EFAC_bf , l10_EQUAD_bf = array.Load_bestfit_params( )
+    sDTE = np.random.rand(len(ones))*0.1 + 1 - 0.05
     init_val = [nmodel_sp()] +[l10_EFAC_sp() for i in range(NSS)] + [l10_EQUAD_sp() for i in range(NSS)]   + sDTE.tolist()  + [l10_ma_sp()] + [l10_Sa_sp()]
-    #init_val = [nmodel_sp()] + l10_EFAC_bf.tolist() + l10_EQUAD_bf.tolist() + K_bf.tolist() + sDTE.tolist() + [v_sp()] + [l10_ma_sp()] + [l10_Sa_sp()]
     return np.array(init_val)
         
 
@@ -223,13 +218,7 @@ with open("chain_dir.txt",'r') as f:
     predir = f.read().split('\n')[0]+"/Signal_Chain/" 
 
 now = datetime.datetime.now()
-#now.strftime("%d-%m-%H:%M")
-
-#name = predir + tag + now.strftime("_T_%d_%m_%y")+ "/" + tag + f"_{dlnlike:.0f}_{lma_min:.2f}_{lma_max:.2f}_Np{NPSR}_Ns{NSS}"
 name = predir + tag +  f"/bin_{args.lma_min:.2f}_{args.lma_max:.2f}"
-
-#os.system("mkdir -p "+name)
-
 
 #=====================================================#
 #    Run the sampler                                  #
@@ -249,8 +238,6 @@ for ipsr in range(NPSR):
     iss += nss
     groups.append(g)
 
-
-#groups += [[i+1,i+1+NSS] for i in range(NSS)]
 cov = np.diag(np.ones(len(init)))
 sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=False, outDir = name )
 sampler.sample(np.array(init),5000000,thin=100)
