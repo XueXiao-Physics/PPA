@@ -1,16 +1,13 @@
 import numpy as np
 import scipy.constants as sc
 import numpy.linalg as nl
-import priors
+from .priors import get_psr_loc, gen_DM_dist_lnprior , gen_PX_dist_lnprior, get_DTE, gen_uniform_lnprior
 import glob
 import scipy.linalg as sl
-import mpmath
 import json
-import argparse
-mpmath.mp.dps=30
-#import jax.numpy.linalg as jnl
-#import jax
-#jax.config.update('jax_platform_name', 'cpu')
+import os
+module_path = os.path.dirname(__file__) + "/"
+
 
 KPC_TO_S = sc.parsec*1e3/sc.c
 TREF = 54550.
@@ -30,18 +27,12 @@ def svd_inv( M ):
         return u @ np.diag(1/s) @ v , np.sum(np.log(s))
 
 
-def mpmath_inv(M):
-    M_inv = mpmath.inverse(mpmath.matrix(M))
-    M_inv = np.array(M_inv.tolist(),dtype=np.float64)
-    M_logdet = np.float64(mpmath.log(mpmath.det(M)))
-    return M_inv,M_logdet
-
 #=========================================================#
 #    Load the information of all available pulsars        #
 #=========================================================#
 def Load_All_Pulsar_Info():
 
-    with open("Parfile/par.txt",'r') as f:
+    with open(module_path+"Parfile/pulsars.txt",'r') as f:
         lines = f.readlines()
         newlines = []
         # remove titles
@@ -73,12 +64,12 @@ def Load_All_Pulsar_Info():
                 PX_ERR = np.nan
 
             # Find subsets
-            Data_Files = sorted(glob.glob("Data/"+psr+"_*.txt"))
-            RM_Files = sorted(glob.glob("ionFR_correction/"+psr+"_ionFR_*.txt"))
-            Band_Names_DATA = [ f.split("/")[1].split("_")[1].split(".")[0]  for f in Data_Files]
+            Data_Files = sorted(glob.glob(module_path+"Data/"+psr+"_*.txt"))
+            RM_Files = sorted(glob.glob(module_path+"ionFR_correction/"+psr+"_ionFR_*.txt"))
+            Band_Names_DATA = [ f.split("/")[-1].split("_")[1].split(".")[0]  for f in Data_Files]
             DATA = { Band_Names_DATA[i]:Data_Files[i] for i in range(len(Data_Files)) }
 
-            Band_Names_RM = [ f.split("/")[1].split("_")[2].split(".")[0]  for f in RM_Files]
+            Band_Names_RM = [ f.split("/")[-1].split("_")[2].split(".")[0]  for f in RM_Files]
             RM = { Band_Names_RM[i]:RM_Files[i] for i in range(len(RM_Files)) }
             param_dict.update({psr:
                 {"PSR":psr,
@@ -103,8 +94,8 @@ class Pulsar():
         self.PSR_NAME = PSR_DICT["PSR"]
         #self.import_psr()
 
-        self.DTE0,self.DTE_LNPRIOR = priors.get_DTE( PSR_DICT["DTE_DM"] , PSR_DICT["PX"] , PSR_DICT["PX_ERR"] )
-        self.PSR_LOC = priors.get_psr_loc( PSR_DICT["RAJ"] , PSR_DICT["DECJ"] )
+        self.DTE0,self.DTE_LNPRIOR = get_DTE( PSR_DICT["DTE_DM"] , PSR_DICT["PX"] , PSR_DICT["PX_ERR"] )
+        self.PSR_LOC = get_psr_loc( PSR_DICT["RAJ"] , PSR_DICT["DECJ"] )
 
 
 
@@ -220,8 +211,8 @@ class Pulsar():
 
             return lnl_original + lnl_marginalized
             
-        l10_EFAC_prior,l10_EFAC_prior_sampler = priors.gen_uniform_lnprior(p[0],p[1])
-        l10_EQUAD_prior,l10_EQUAD_sampler = priors.gen_uniform_lnprior(p[2],p[3])
+        l10_EFAC_prior,l10_EFAC_prior_sampler = gen_uniform_lnprior(p[0],p[1])
+        l10_EQUAD_prior,l10_EQUAD_sampler = gen_uniform_lnprior(p[2],p[3])
         
         def lnprior( params ):
             l10_EFAC , l10_EQUAD  = params
@@ -370,7 +361,7 @@ class Array():
         l10_EFAC = []
         l10_EQUAD = []
 
-        with open("Parfile/spa_results.json",'r') as f:
+        with open(module_path+"Parfile/spa_results.json",'r') as f:
             spa_results = json.load(f)
 
         for P in range( self.NPSR ):
@@ -569,79 +560,6 @@ class Array():
 
 
             return lnl_original + lnl_marginalized
-
-
-            # #=============================================#
-            # #     For marginalization                     #
-            # #=============================================#
-            # Fx = np.zeros( ( self.NPSR*2,self.NSUBSETS_TOTAL ) )
-            # Fv = np.zeros( ( self.NPSR*2,self.NSUBSETS_TOTAL ) )
-            # xNx = np.zeros( self.NSUBSETS_TOTAL ) 
-            # FNF = np.zeros( ( self.NPSR*2 , self.NPSR*2 ) )
-
-            # iSS = 0
-            # for P in range(self.NPSR):
-            #     FNF_psr = np.zeros((2,2))
-            #     for i in range(self.NSUBSETS_by_SS[P]):
-            #         DPA_SS = DPA_by_SS[iSS].astype(np.float64) 
-            #         V_SS = V_by_SS[iSS].astype(np.float64)
-            #         F_SS = F_by_SS[iSS].astype(np.float64)
-            #         sqrt_N_SS = np.sqrt( N_by_SS[iSS].astype(np.float64) )
-
-            #         DPA_whiten =  DPA_SS / sqrt_N_SS
-            #         V_whiten   =  V_SS       / sqrt_N_SS
-            #         F_whiten   =  F_SS       / sqrt_N_SS[None,:] 
-
-            #         FNF_psr +=  F_whiten @ F_whiten.T
-            #         Fx[P*2 : P*2+2 , iSS] = F_whiten @ DPA_whiten
-            #         Fv[P*2 : P*2+2 , iSS] = F_whiten @ V_whiten
-            #         vNx[iSS] =  V_whiten @ DPA_whiten
-            #         vNv[iSS] =  V_whiten @ V_whiten
-            #         xNx[iSS] =  DPA_whiten @ DPA_whiten
-            #         iSS += 1
-            #     FNF[ P*2 : P*2+2 , P*2 : P*2+2 ] = FNF_psr
-
-            # #=============================================#
-            # #     Matrix Inversion                        #
-            # #=============================================#
-                    
-            # if l10_ma < -23.4 and method =="Full" :
-            
-            #     Phi_inv , Phi_logdet = mpmath_inv(Phi)
-            #     PhiFNF = Phi_inv + FNF
-            #     PhiFNF_inv , PhiFNF_logdet = mpmath_inv(PhiFNF)
-            
-            # else:
-            #     try:
-            #         Phi_inv,Phi_logdet = svd_inv(Phi)
-            #         PhiFNF = Phi_inv + FNF
-            #         PhiFNF_inv,PhiFNF_logdet = svd_inv(PhiFNF)
-            #     except:
-            #         Phi_inv , Phi_logdet = mpmath_inv(Phi)
-            #         PhiFNF = Phi_inv + FNF
-            #         PhiFNF_inv , PhiFNF_logdet = mpmath_inv(PhiFNF) 
-
-
-            # vNx = np.diag(vNx)
-            # vNv = np.diag(vNv)
-
-            # vCx = vNx - Fv.T @ PhiFNF_inv @ Fx
-            # vCv = vNv - Fv.T @ PhiFNF_inv @ Fv
-            # #vCv_inv = sl.inv(vCv)
-            # vCv_inv , vCv_logdet = svd_inv(vCv)
-            # x0_mlh = np.sum( vCv_inv @ vCx , axis=1)
-
-            # #=============================================#
-            # #     The end of Subtraction                  #
-            # #=============================================#
-            
-            # Sigma_logdet = Phi_logdet + PhiFNF_logdet + N_logdet
-            # lnlike_val = -0.5*( xNx.sum() - ( Fx.T @ PhiFNF_inv @ Fx).sum()  - x0_mlh @ vCv @ x0_mlh ) - 0.5*Sigma_logdet - CONST * NOBS_TOTAL
-
-            # if l10_ma < -23.4 and method =="Full":
-            #     print(lnlike_val)
-            
-            # return lnlike_val
 
 
 

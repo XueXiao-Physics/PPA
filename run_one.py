@@ -1,12 +1,7 @@
-#import axion_ppa
-import priors
 import ppa
 import numpy as np
 from PTMCMCSampler.PTMCMCSampler import PTSampler
-import sys
 import datetime
-import os
-import json
 import argparse
 try:
     import mpi4py
@@ -142,11 +137,11 @@ def lnlike_sig1( params ):
 #    Define lnprior                                   #
 #=====================================================#
 
-l10_EFAC_lp , l10_EFAC_sp = priors.gen_uniform_lnprior(-1,3)
-l10_EQUAD_lp , l10_EQUAD_sp = priors.gen_uniform_lnprior(-8,2)
+l10_EFAC_lp , l10_EFAC_sp = ppa.gen_uniform_lnprior(-1,3)
+l10_EQUAD_lp , l10_EQUAD_sp = ppa.gen_uniform_lnprior(-8,2)
 sDTE_lp = array.sDTE_LNPRIOR
-l10_ma_lp , l10_ma_sp = priors.gen_uniform_lnprior(args.lma_min,args.lma_max)
-l10_Sa_lp , l10_Sa_sp = priors.gen_uniform_lnprior(-8,2)
+l10_ma_lp , l10_ma_sp = ppa.gen_uniform_lnprior(args.lma_min,args.lma_max)
+l10_Sa_lp , l10_Sa_sp = ppa.gen_uniform_lnprior(-8,2)
 
 def lnprior_nonmodel( params ):
     l10_EFAC , l10_EQUAD ,  sDTE , l10_ma , l10_Sa =  Mapper( params )
@@ -178,15 +173,15 @@ def lnlike( all_params ):
 if args.dlnprior == np.inf:
     add1 = 0
     add2 = -np.inf
-    nmodel_lp,nmodel_sp = priors.gen_uniform_lnprior(-1,0)
+    nmodel_lp,nmodel_sp = ppa.gen_uniform_lnprior(-1,0)
 elif args.dlnprior == -np.inf:
     add1 = -np.inf
     add2 = 0
-    nmodel_lp,nmodel_sp = priors.gen_uniform_lnprior(0,1)
+    nmodel_lp,nmodel_sp = ppa.gen_uniform_lnprior(0,1)
 else:
     add1 = args.dlnprior
     add2 = 0
-    nmodel_lp,nmodel_sp = priors.gen_uniform_lnprior(-1,1)
+    nmodel_lp,nmodel_sp = ppa.gen_uniform_lnprior(-1,1)
 
 def lnprior( all_params ):
     
