@@ -25,9 +25,9 @@ parser.add_argument("-order"    , action="store", type=int , default="2" )
 parser.add_argument("-dlnprior" , action = "store" , type = float , default="0" )
 
 parser.add_argument("-mock_method" , action = "store", choices=["none" , "white" , "auto" ,"data"] , default="data")
-parser.add_argument("-mock_lma"    , action = "store" , type = float )
-parser.add_argument("-mock_lSa"    , action = "store" , type = float )
-parser.add_argument("-pulsar"      , action = "store" , type = int )
+parser.add_argument("-mock_lma"    , action = "store" , type = float , default = "-22.0"  )
+parser.add_argument("-mock_lSa"    , action = "store" , type = float , default = "-2.5" )
+parser.add_argument("-pulsar"      , action = "store" , type = int , default="-1" )
 parser.add_argument("-iono"        , action = "store", choices=["none","subt"] , default='subt')
 parser.add_argument("-subset"      , action = "store", choices=["10cm","20cm","all"] , default = "all" )
 parser.add_argument("-bf"          , action = "store", choices = ["af" , "na" , "nf"] , default = "af" )
@@ -50,10 +50,10 @@ pulsars = [ ppa.Pulsar( PSR_DICT[psrn] , order = args.order , iono = args.iono ,
 
 
 PSR_NAME_LIST = [psr.PSR_NAME for psr in pulsars]
-if type(args.pulsar) == int : 
+if args.pulsar >= 0 : 
     pulsars = [pulsars[args.pulsar]]
     tag += pulsars[0].PSR_NAME + '_'
-else:
+elif args.pulasr == -1:
     pulsars = pulsars
 
 

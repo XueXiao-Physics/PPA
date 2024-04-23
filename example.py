@@ -39,5 +39,5 @@ def run(ipsr=None,Range=range(5,56)):
 run()
 #run()
 #for ipsr in range(8,22):
-#    run(ipsr)
+#    run(ipsr=ipsr)
 #    time.sleep(1400)
