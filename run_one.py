@@ -29,7 +29,7 @@ parser.add_argument("-mock_lma"    , action = "store" , type = float , default =
 parser.add_argument("-mock_lSa"    , action = "store" , type = float , default = "-2.5" )
 parser.add_argument("-pulsar"      , action = "store" , type = int , default="-1" )
 parser.add_argument("-iono"        , action = "store", choices=["none","subt"] , default='subt')
-parser.add_argument("-subset"      , action = "store", choices=["10cm","20cm","all"] , default = "10cm" )
+parser.add_argument("-subset"      , action = "store", choices=["10cm","20cm","all"] , default = "all" )
 parser.add_argument("-bf"          , action = "store", choices = ["af" , "na" , "nf"] , default = "af" )
 
 args = parser.parse_args()
@@ -159,45 +159,35 @@ def lnprior_nonmodel( params ):
 #=====================================================#
 def lnlike( all_params ):
     nmodel = all_params[0]
-    # if nmodel < 0:
-    #     lnlike_val =  lnlike_sig0( all_params[1:] )
-    # elif nmodel >= 0:
-    #     lnlike_val =  lnlike_sig1( all_params[1:] ) 
-    lnlike_val_0 = lnlike_sig0( all_params[1:] )
-    lnlike_val_1 = lnlike_sig1( all_params[1:] )
-
-    lnlike_val = lnlike_val_0 + np.log( nmodel + (1-nmodel) * np.exp( lnlike_val_1 - lnlike_val_0  ) )
+    if nmodel < 0:
+        lnlike_val =  lnlike_sig0( all_params[1:] )
+    elif nmodel >= 0:
+        lnlike_val =  lnlike_sig1( all_params[1:] ) 
     return lnlike_val
 
 
-# if args.dlnprior == np.inf:
-#     add1 = 0
-#     add2 = -np.inf
-#     nmodel_lp,nmodel_sp = ppa.gen_uniform_lnprior(-1,0)
-# elif args.dlnprior == -np.inf:
-#     add1 = -np.inf
-#     add2 = 0
-#     nmodel_lp,nmodel_sp = ppa.gen_uniform_lnprior(0,1)
-# else:
-#     add1 = args.dlnprior
-#     add2 = 0
-#     nmodel_lp,nmodel_sp = ppa.gen_uniform_lnprior(-1,1)
+if args.dlnprior == np.inf:
+    add1 = 0
+    add2 = -np.inf
+    nmodel_lp,nmodel_sp = ppa.gen_uniform_lnprior(-1,0)
+elif args.dlnprior == -np.inf:
+    add1 = -np.inf
+    add2 = 0
+    nmodel_lp,nmodel_sp = ppa.gen_uniform_lnprior(0,1)
+else:
+    add1 = args.dlnprior
+    add2 = 0
+    nmodel_lp,nmodel_sp = ppa.gen_uniform_lnprior(-1,1)
 
-nmodel_lp,nmodel_sp = ppa.gen_uniform_lnprior(0,1)
-def lnprior( all_params):
+def lnprior( all_params ):
+    
     nmodel = all_params[0] 
     lnprior_val = lnprior_nonmodel( all_params[1:] ) + nmodel_lp(all_params[0])
-    return lnprior_val
-    
-# def lnprior( all_params ):
-    
-#     nmodel = all_params[0] 
-#     lnprior_val = lnprior_nonmodel( all_params[1:] ) + nmodel_lp(all_params[0])
-#     if nmodel < 0:
-#         lnprior_val += add1
-#     elif nmodel >= 0:
-#         lnprior_val += add2
-#     return  lnprior_val
+    if nmodel < 0:
+        lnprior_val += add1
+    elif nmodel >= 0:
+        lnprior_val += add2
+    return  lnprior_val
 
 
 #=====================================================#
