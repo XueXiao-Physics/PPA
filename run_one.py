@@ -157,38 +157,52 @@ def lnprior_nonmodel( params ):
 #=====================================================#
 #    Add hyper paramter nmodel                        #
 #=====================================================#
+# def lnlike( all_params ):
+#     nmodel = all_params[0]
+#     if nmodel < 0:
+#         lnlike_val =  lnlike_sig0( all_params[1:] )
+#     elif nmodel >= 0:
+#         lnlike_val =  lnlike_sig1( all_params[1:] ) 
+#     return lnlike_val
+
+
+# if args.dlnprior == np.inf:
+#     add1 = 0
+#     add2 = -np.inf
+#     nmodel_lp,nmodel_sp = ppa.gen_uniform_lnprior(-1,0)
+# elif args.dlnprior == -np.inf:
+#     add1 = -np.inf
+#     add2 = 0
+#     nmodel_lp,nmodel_sp = ppa.gen_uniform_lnprior(0,1)
+# else:
+#     add1 = args.dlnprior
+#     add2 = 0
+#     nmodel_lp,nmodel_sp = ppa.gen_uniform_lnprior(-1,1)
+
+# def lnprior( all_params ):
+    
+#     nmodel = all_params[0] 
+#     lnprior_val = lnprior_nonmodel( all_params[1:] ) + nmodel_lp(all_params[0])
+#     if nmodel < 0:
+#         lnprior_val += add1
+#     elif nmodel >= 0:
+#         lnprior_val += add2
+#     return  lnprior_val
+
 def lnlike( all_params ):
     nmodel = all_params[0]
-    if nmodel < 0:
-        lnlike_val =  lnlike_sig0( all_params[1:] )
-    elif nmodel >= 0:
-        lnlike_val =  lnlike_sig1( all_params[1:] ) 
-    return lnlike_val
+    lnlike_val_0 =  lnlike_sig0( all_params[1:] )
+    lnlike_val_1 =  lnlike_sig1( all_params[1:] )
+
+    inlog = 0.5 * np.exp( nmodel/2 ) + 0.5 * np.exp( -nmodel/2 + lnlike_val_1 - lnlike_val_0 ) 
+    return  - (  lnlike_val_0 + np.log(inlog) )
 
 
-if args.dlnprior == np.inf:
-    add1 = 0
-    add2 = -np.inf
-    nmodel_lp,nmodel_sp = ppa.gen_uniform_lnprior(-1,0)
-elif args.dlnprior == -np.inf:
-    add1 = -np.inf
-    add2 = 0
-    nmodel_lp,nmodel_sp = ppa.gen_uniform_lnprior(0,1)
-else:
-    add1 = args.dlnprior
-    add2 = 0
-    nmodel_lp,nmodel_sp = ppa.gen_uniform_lnprior(-1,1)
-
+nmodel_lp,nmodel_sp = ppa.gen_uniform_lnprior(-150,150)
 def lnprior( all_params ):
-    
     nmodel = all_params[0] 
     lnprior_val = lnprior_nonmodel( all_params[1:] ) + nmodel_lp(all_params[0])
-    if nmodel < 0:
-        lnprior_val += add1
-    elif nmodel >= 0:
-        lnprior_val += add2
     return  lnprior_val
-
 
 #=====================================================#
 #    Initial values                                   #
