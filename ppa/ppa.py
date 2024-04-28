@@ -126,8 +126,15 @@ class Pulsar():
         self.WAVE_LENGTH = []
 
         for SS in self.SUBSETS:
-            TOA , DPA , DPA_ERR = np.loadtxt( PSR_DICT["DATA"][SS] )
-            RM , RM_ERR = np.loadtxt( PSR_DICT["RM"][SS] )
+            TOA1 , DPA , DPA_ERR = np.loadtxt( PSR_DICT["DATA"][SS] )
+            TOA2,  RM , RM_ERR = np.loadtxt( PSR_DICT["RM"][SS] )
+            # Finding overlap TOA
+            TOA , idx1 , idx2 = np.intersect1d(TOA1,TOA2, return_indices=True)
+            DPA = DPA[idx1]
+            DPA_ERR = DPA_ERR[idx1]
+            RM = RM[idx2]
+            RM_ERR = RM_ERR[idx2]
+
             NOBS = len(TOA)
             if order in [ 0 , 1 , 2 ]:
                 DES_MTX = self.get_design_matrix( TOA , order =  order )
