@@ -14,9 +14,9 @@ iono = "subt"#"Subt"
 subset = "10cm"
 bf = "nf"
 
-def run(ipsr=-1,Range=range(5,56)):
+def run(ipsr=-1,Range=range(0,51)):
     for lma_idx in Range:
-        lma_mid = -24.00 + float(lma_idx)*0.1
+        lma_mid = -23.50 + float(lma_idx)*0.1
         lma_min = lma_mid-0.05
         lma_max = lma_mid+0.05
         argument = "python run_one.py "\
@@ -30,7 +30,8 @@ def run(ipsr=-1,Range=range(5,56)):
              +  " -pulsar " + str(ipsr)   
         os.system(argument + " &")
 
-run( Range = [ 5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 21, 47, 50, 52, 53, 54])
+run()
+#run( Range = [ 5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 21, 47, 50, 52, 53, 54])
 #run()
 #for ipsr in range(8,22):
 #    run(ipsr=ipsr)

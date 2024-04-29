@@ -133,7 +133,7 @@ def lnlike_sig1( params ):
 #    Define lnprior                                   #
 #=====================================================#
 
-l10_EFAC_lp , l10_EFAC_sp = ppa.gen_uniform_lnprior(-1,3)
+l10_EFAC_lp , l10_EFAC_sp = ppa.gen_uniform_lnprior(-2,2)
 l10_EQUAD_lp , l10_EQUAD_sp = ppa.gen_uniform_lnprior(-8,2)
 sDTE_lp = array.sDTE_LNPRIOR
 l10_ma_lp , l10_ma_sp = ppa.gen_uniform_lnprior(args.lma_min,args.lma_max)

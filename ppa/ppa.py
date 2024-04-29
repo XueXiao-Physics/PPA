@@ -188,7 +188,7 @@ class Pulsar():
 
 
 
-    def gen_spa_likelihood( self , SS , p=[-1,3,-8,2 ] ):
+    def gen_spa_likelihood( self , SS , p=[-2,2,-8,2 ] ):
 
         SS_IDX = self.SUBSETS.index(SS)
         DPA = self.DPA[SS_IDX]
