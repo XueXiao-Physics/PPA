@@ -85,23 +85,23 @@ else:
 ones = np.ones(array.NPSR)
 zeros = np.zeros(array.NPSR)
 if args.model == "n":
-    lnlike_sig0_raw = array.Generate_Lnlike_Function( method="None" )
-    lnlike_sig1_raw = array.Generate_Lnlike_Function( method="None" )
+    lnlike_sig0_raw = array.Generate_Lnlike_Function( "none" )
+    lnlike_sig1_raw = array.Generate_Lnlike_Function( "none" )
 elif args.model == "a":
-    lnlike_sig0_raw = array.Generate_Lnlike_Function( method="Auto" )
-    lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Auto" )
+    lnlike_sig0_raw = array.Generate_Lnlike_Function( "auto" )
+    lnlike_sig1_raw = array.Generate_Lnlike_Function( "auto" )
 elif args.model == "f":
-    lnlike_sig0_raw = array.Generate_Lnlike_Function( method="Full" )
-    lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Full" )
+    lnlike_sig0_raw = array.Generate_Lnlike_Function( "full" )
+    lnlike_sig1_raw = array.Generate_Lnlike_Function( "full" )
 elif args.model == "af":
-    lnlike_sig0_raw = array.Generate_Lnlike_Function( method="Auto" )
-    lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Full" )
+    lnlike_sig0_raw = array.Generate_Lnlike_Function( "auto" )
+    lnlike_sig1_raw = array.Generate_Lnlike_Function( "full" )
 elif args.model == "na":
-    lnlike_sig0_raw = array.Generate_Lnlike_Function( method="None" )
-    lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Auto" )
+    lnlike_sig0_raw = array.Generate_Lnlike_Function( "none" )
+    lnlike_sig1_raw = array.Generate_Lnlike_Function( "auto" )
 elif args.model == "nf":
-    lnlike_sig0_raw = array.Generate_Lnlike_Function( method="None" )
-    lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Full" )
+    lnlike_sig0_raw = array.Generate_Lnlike_Function( "none" )
+    lnlike_sig1_raw = array.Generate_Lnlike_Function( "full" )
 else:
     raise
 NSS = np.sum( array.NSUBSETS_by_SS )

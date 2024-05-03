@@ -341,7 +341,7 @@ class Array():
                 Phi_logdet += np.sum( np.log( Sred2[p][ss] ) )
 
         
-        if adm_signal == "none":
+        if adm_signal in [ "none"]:
             Phi_inv = np.diag( np.concatenate([x for xs in Phi_inv_vec for x in xs]) )
             return Phi_inv , Phi_logdet
         
