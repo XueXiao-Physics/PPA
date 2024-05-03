@@ -6,6 +6,7 @@ import glob
 import scipy.linalg as sl
 import json
 import os
+from copy import deepcopy
 module_path = os.path.dirname(__file__) + "/"
 
 
@@ -226,7 +227,7 @@ class Pulsar():
 
 class Array():
 
-    def __init__( self , Pulsars  ):
+    def __init__( self , Pulsars ):
 
         # elimate all pulsars that have no data
         Pulsars = [ P for P in Pulsars if len(P.SUBSETS) ]
@@ -256,60 +257,64 @@ class Array():
         self.NSUBSETS_by_SS = [ len(SUBSETS) for SUBSETS in self.SUBSETS]
         self.NSUBSETS_TOTAL = np.sum(self.NSUBSETS_by_SS)
 
-
-
         self.F_RED_COMBINED = self.Get_Red_F()
-        
+        self.PHI_BASE_RED_VEC = self.Get_Phi_base_red()
 
 
-
-    #  It is to put the red noise Phi into a diagonal matrix
-    def Get_Red_Phi_Vec( self  ,   all_phi ):
-        
-        # Generate a base matrix
-        ndim_by_psr = [ 2*np.sum(x)+2 for x in self.NFREQS ]
-        
-        Phi_vec = np.zeros( np.sum( ndim_by_psr )  )
-        pointer = 0
+    # for an array that is by subset, fold it
+    def Fold_Array(self,Array_by_ss):
         iss = 0
+        New_Array = []
         for p in range(self.NPSR):
-            # For Phi
-            pointer = pointer + 2
-            for ss in range(self.NSUBSETS_by_SS[p]):
-                Phi_vec[ pointer  : pointer +  self.NFREQS[p][ss]*2 ] = all_phi[iss]
-                pointer = pointer + self.NFREQS[p][ss]*2
+            New_Array_psr = []
+            for ss in range(self.NSUBSETS_by_SS[p] ):
+                New_Array_psr.append( Array_by_ss[iss] )
                 iss += 1
+            New_Array.append( New_Array_psr )
+        return New_Array
 
-        return Phi_vec 
-    
-
+        
     #=====================================================#
     #    Get F for red noises, pre-calculated             #
     #=====================================================#
-    def Get_Red_F(self):       
-        ndim_by_psr = [ 2*np.sum(x)+2 for x in self.NFREQS ] 
+        
+    #  It is to put the red noise Phi into a diagonal matrix
+    def Get_Phi_base_red( self ):
+
+        PHI_BASE_RED_VEC = []
+        for p in range(self.NPSR):
+            PHI_BASE_RED_VEC_psr = []
+            for ss in range(self.NSUBSETS_by_SS[p]):
+                PHI_BASE_RED_VEC_psr.append( np.ones( self.NFREQS[p][ss]*2 ) )
+            
+            PHI_BASE_RED_VEC.append( PHI_BASE_RED_VEC_psr )
+
+        return PHI_BASE_RED_VEC 
+    
+    # it is precalculated
+    def Get_Red_F( self ): 
+        ndim_by_psr = [ 2*np.sum(x)  for x in self.NFREQS ] 
         F_RED_COMBINED = []
 
         for p in range(self.NPSR):
-            pointer_x = 2
+            pointer_x = 0
             pointer_y = 0
             F = np.zeros( ( ndim_by_psr[p] , np.sum(self.NOBS[p]) ) )
             for ss in range(self.NSUBSETS_by_SS[p]):
                 dx = self.NFREQS[p][ss]*2
                 dy = self.NOBS[p][ss]
                 F[pointer_x:pointer_x +  dx,pointer_y:pointer_y + dy] = self.F_RED[p][ss]
-
-                
                 pointer_x += dx
                 pointer_y += dy
             F_RED_COMBINED.append(F)
 
-        return F_RED_COMBINED
+        return  F_RED_COMBINED 
 
 
 
-
-
+    #=====================================================#
+    #    Axion Properties                                 #
+    #=====================================================#
     def Get_Star_Locations( self , sDTE ):
 
         PSR_POS = self.PSR_LOC * sDTE[:,None] * self.DTE0[:,None]
@@ -323,84 +328,117 @@ class Array():
 
 
         return PSR_POS,DL_MTX
-    
 
 
-    #=====================================================#
-    #    Axion Properties                                 #
-    #=====================================================#
-
-
-
-    def Get_ADM_Phi( self , v , ma, sDTE ):
-        
-        DTE = self.DTE0 * sDTE
-        PSR_POS , DL_MTX = self.Get_Star_Locations( sDTE )
-        omega = ma * sc.eV / sc.hbar
-        lc = get_lc( v , ma )
-
-
-        sincpq_all =  np.sinc( DL_MTX / lc / np.pi )
-        sincp_all = np.sinc( DTE/ lc / np.pi )
-
-        cp_all = np.cos( omega * DTE * KPC_TO_S )
-        sp_all = np.sin( omega * DTE * KPC_TO_S )
-
-        cpq_all = cp_all[:,None]*cp_all[None,:] + sp_all[:,None]*sp_all[None,:]
-        spq_all = sp_all[:,None]*cp_all[None,:] - cp_all[:,None]*sp_all[None,:]
-
-        Phi_blocks = np.zeros((self.NPSR,self.NPSR),dtype=np.ndarray)
-
-    
-        ndim_by_psr = [ 2*np.sum(x)+2 for x in self.NFREQS ] 
-        ADM_Phi = np.zeros( ( np.sum(ndim_by_psr) , np.sum(ndim_by_psr)) )
-
-        pointer_x = 0
+    def Get_Phi_inv( self , v , ma, sDTE , Sa2 , Sred2 , adm_signal ):
+        # this function is to combine every phi into a combined matrix.
+        Sred2 = self.Fold_Array(Sred2)
+        Phi_inv_vec = deepcopy( self.PHI_BASE_RED_VEC )
+        Phi_logdet = 0
         for p in range(self.NPSR):
-            pointer_y = 0
-            for q in range(self.NPSR):
-                sincpq = sincpq_all[p,q]
-                sincp = sincp_all[p]
-                sincq = sincp_all[q]
+            for ss in range(self.NSUBSETS_by_SS[p]):
+                Phi_inv_vec[p][ss] = Phi_inv_vec[p][ss] / Sred2[p][ss]
+                Phi_logdet += np.sum( np.log( Sred2[p][ss] ) )
 
-                cpq = cpq_all[p,q]
-                spq = spq_all[p,q]
-                cp = cp_all[p]
-                sp = sp_all[p]
-                cq = cp_all[q]
-                sq = sp_all[q]
-                
-                Phi_ccss = 1 + sincpq*cpq - sincp*cp - sincq*cq
-                Phi_sc =  sincpq*spq - sincp*sp + sincq*sq
-                Phi_cs = -Phi_sc
-
-                Phi_pq = np.array([[Phi_ccss,Phi_cs],[Phi_sc,Phi_ccss]]) 
-                ADM_Phi[ pointer_x:pointer_x+2 , pointer_y:pointer_y+2 ] = Phi_pq
-                pointer_y += ndim_by_psr[q]
-            pointer_x += ndim_by_psr[p]
+        
+        if adm_signal == "none":
+            Phi_inv = np.diag( np.concatenate([x for xs in Phi_inv_vec for x in xs]) )
+            return Phi_inv , Phi_logdet
+        
+        elif adm_signal in ["auto","full"] :
+            DTE = self.DTE0 * sDTE
+            PSR_POS , DL_MTX = self.Get_Star_Locations( sDTE )
+            omega = ma * sc.eV / sc.hbar
+            lc = get_lc( v , ma )
 
 
-                #Phi_blocks[p,q] = Phi_pq.copy()
+            sincpq_all =  np.sinc( DL_MTX / lc / np.pi )
+            sincp_all = np.sinc( DTE/ lc / np.pi )
+            cp_all = np.cos( omega * DTE * KPC_TO_S )
+            sp_all = np.sin( omega * DTE * KPC_TO_S )
+            cpq_all = cp_all[:,None]*cp_all[None,:] + sp_all[:,None]*sp_all[None,:]
+            spq_all = sp_all[:,None]*cp_all[None,:] - cp_all[:,None]*sp_all[None,:]    
 
-        return ADM_Phi
+            if adm_signal == "auto":
+                for p in range(self.NPSR):
+                    sincpq = sincpq_all[p,p];sincp = sincq = sincp_all[p]
+                    cpq = cpq_all[p,p]
+                    cp = cq = cp_all[p]
+                    
+                    Phi_ccss = ( 1 + sincpq*cpq - sincp*cp - sincq*cq ) * Sa2
+                    Phi_inv_pq = 1 / np.array([ Phi_ccss , Phi_ccss ]) 
+                    Phi_inv_vec[p].insert( 0 , Phi_inv_pq )
+                    Phi_logdet += np.log(  Phi_ccss )* 2
 
-    def Get_ADM_F(self,ma):
-        # added based on the red noise F
+                Phi_inv = np.diag( np.concatenate([x for xs in Phi_inv_vec for x in xs]) )
+                return Phi_inv , Phi_logdet
+            
+            elif adm_signal == "full":
+
+                ADM_Phi_compact = np.zeros( (self.NPSR*2,self.NPSR*2 ))
+                pointer_x = 0
+                for p in range(self.NPSR):
+                    pointer_y = 0
+                    for q in range(self.NPSR):
+                        sincpq = sincpq_all[p,q];sincp = sincp_all[p];sincq = sincp_all[q]
+                        cpq = cpq_all[p,q]; spq = spq_all[p,q]
+                        cp = cp_all[p] ; sp = sp_all[p] ; cq = cp_all[q] ; sq = sp_all[q]
+                        
+                        Phi_ccss = 1 + sincpq*cpq - sincp*cp - sincq*cq
+                        Phi_sc =  sincpq*spq - sincp*sp + sincq*sq
+                        Phi_cs = -Phi_sc
+
+                        Phi_pq = np.array([[Phi_ccss,Phi_cs],[Phi_sc,Phi_ccss]]) * Sa2
+                        ADM_Phi_compact[ pointer_x:pointer_x+2 , pointer_y:pointer_y+2 ] = Phi_pq
+                        pointer_y += 2
+                    pointer_x += 2
+                ADM_Phi_inv_compact , ADM_Phi_logdet = svd_inv(ADM_Phi_compact)
+                Phi_logdet += ADM_Phi_logdet
+
+                # now put everything together
+                ndim_by_psr = [ 2*np.sum(x)+2 for x in self.NFREQS ]
+                Phi_inv = np.zeros( ( np.sum(ndim_by_psr) , np.sum(ndim_by_psr)) )
+
+                pointer_x = 0
+                pointer2_x = 0
+                for p in range(self.NPSR):
+                    pointer_y = 0
+                    pointer2_y = 0
+                    for q in range(self.NPSR):
+                        Phi_inv[ pointer_x:pointer_x+2 , pointer_y:pointer_y+2 ] \
+                            = ADM_Phi_inv_compact[ pointer2_x:pointer2_x+2 , pointer2_y:pointer2_y+2]
+                        
+                        
+                        if p == q:
+                            phired = np.diag(np.concatenate(Phi_inv_vec[p]))
+                            Phi_inv[ pointer_x+2:pointer_x+ndim_by_psr[p] , pointer_y+2:pointer_y+ndim_by_psr[p] ] = phired
+                            
+                        pointer_y += ndim_by_psr[q] 
+                        pointer2_y += 2
+                    pointer_x += ndim_by_psr[p] 
+                    pointer2_x += 2
+                    
+                return Phi_inv , Phi_logdet
+
+
+
+    def Get_ADM_F(self,ma ):
 
         omega = ma*sc.eV/sc.hbar
-        F_COMBINED = self.F_RED_COMBINED.copy()
+        F_COMBINED = deepcopy(self.F_RED_COMBINED)
         for p in range(self.NPSR):
             pointer = 0
+            F_NEW = np.zeros( (2,len(F_COMBINED[p][0])) )
             for ss in range( self.NSUBSETS_by_SS[p] ):
-
                 NOBS = self.NOBS[p][ss]
                 t = self.TOA[p][ss] * sc.day
-                F_COMBINED[p][ 0 , pointer:pointer+NOBS] = np.cos(omega * t.astype(np.float64))
-                F_COMBINED[p][ 1 , pointer:pointer+NOBS] = np.cos(omega * t.astype(np.float64))
+                F_NEW[ 0 , pointer:pointer+NOBS] = np.cos(omega * t.astype(np.float64))
+                F_NEW[ 1 , pointer:pointer+NOBS] = np.sin(omega * t.astype(np.float64))
+
 
                 pointer += NOBS
+            F_COMBINED[p] = np.vstack([ F_NEW , F_COMBINED[p] ])
             
-
         #return F_matrix  , F_blocks_bysubsets
         return F_COMBINED
     
@@ -497,7 +535,7 @@ class Array():
     #    For statistics                                   #
     #=====================================================#
 
-    def Generate_Lnlike_Function( self , method = "Full" ):    
+    def Generate_Lnlike_Function( self , adm_signal ):    
         #type of signal
 
         DPA_ERR_by_SS = np.array([ x for xs in self.DPA_ERR for x in xs] ,dtype=np.ndarray)
@@ -531,34 +569,21 @@ class Array():
             #=============================================#
             #     Red Noise                               #
             #=============================================#
-            Factors_red = [  np.repeat( (FREQS_by_SS[i]/FYR)**Gamma[i] * S0red[i]**2 ,2) for i in range(self.NSUBSETS_TOTAL)]
+            Sred2 = [  np.repeat( (FREQS_by_SS[i]/FYR)**Gamma[i] * S0red[i]**2 *  FREQS_by_SS[i][0]/FYR ,2) for i in range(self.NSUBSETS_TOTAL)]
+
+
+            Phi_inv , Phi_logdet = self.Get_Phi_inv( 1e-3 , ma , sDTE , Sa**2 , Sred2 , adm_signal )
 
             #=============================================#
             #     Phi, Axion and Red                      #
             #=============================================#
-            _Phi_ADM = self.Get_ADM_Phi( 1e-3 , ma , sDTE)
-            _Phi_ADM_Full = np.block( _Phi_ADM.tolist() )  
-            _Phi_ADM_Auto = np.diag( np.diag(_Phi_ADM_Full) )
-
-            if method == "Full":
-                Phi_ADM = _Phi_ADM_Full * Sa**2
-            elif method == "Auto":
-                Phi_ADM = _Phi_ADM_Auto * Sa**2
-            elif method == "None":
-                Phi_ADM = _Phi_ADM_Auto * 1e-99
+            # It is very important that Sa and S0 are not too different from each other.
+            if adm_signal in ['auto','full']:
+                F_by_SS = self.Get_ADM_F( ma )
+            elif adm_signal in ['none']:
+                F_by_SS = self.F_RED_COMBINED
             else:
                 raise
-
-            Phi_RED = np.diag(self.Get_Red_Phi_Vec(Factors_red))
-
-            Phi = Phi_ADM + Phi_RED
-
-
-            
-
-            F_by_SS = self.Get_ADM_F( ma )
-
-
 
             #=============================================#
             #     For marginalization                     #
@@ -589,8 +614,8 @@ class Array():
                 FNF.append( F_whiten @ F_whiten.T )
 
                 # for M
-                MNM.append(  M_whiten.T @ M_whiten )
-                Mx.append( M_whiten.T @ DPA_whiten )
+                MNM.append( M_whiten.T @ M_whiten )
+                Mx.append(  M_whiten.T @ DPA_whiten )
 
                 # end
                 iss+=nss
@@ -606,8 +631,7 @@ class Array():
             #     Combine                                 #
             #=============================================#
             
-            
-            Phi_inv, Phi_logdet = svd_inv(Phi)
+
             PhiFNF = Phi_inv + FNF
             PhiFNF_inv,PhiFNF_logdet = svd_inv(PhiFNF)
 
@@ -630,95 +654,3 @@ class Array():
 
         return lnlikelihood
 
-
-
-
-"""
-            #=============================================#
-            #     For marginalization                     #
-            #=============================================#
-
-
-            # For White noise
-            xNx = 0
-
-            # For axion signal
-            FNF = np.zeros( ( self.NPSR*2 , self.NPSR*2 ) )
-            Fx  = np.zeros( ( self.NPSR*2  ) )
-            FM  = np.zeros( ( self.NPSR*2 , ALL_ORDERS ) ) 
-
-            # For M and N
-            MNM = np.zeros( ( ALL_ORDERS , ALL_ORDERS ) )
-            Mx  = np.zeros( ( ALL_ORDERS ) )
-
-
-            # Start the loop
-            iSS = 0
-            iPAR = 0
-            for P in range(self.NPSR):
-                FNF_psr = np.zeros((2,2))
-                Fx_psr = np.zeros(2)
-                for ii in range(self.NSUBSETS_by_SS[P]):
-
-                    ORDER_SS = ORDERS_by_SS[iSS]
-                    DPA_SS = DPA_by_SS[iSS].astype(np.float64) 
-                    F_SS = F_by_SS[iSS].astype(np.float64)
-
-                    sqrt_N_SS = np.sqrt( N_by_SS[iSS].astype(np.float64) )
-                    M_SS = DES_MTX_by_SS[iSS].astype(np.float64)
-                    
-                    # Whiten
-                    DPA_whiten     = DPA_SS     / sqrt_N_SS
-                    F_whiten       = F_SS       / sqrt_N_SS[None,:]
-                    M_whiten       = M_SS       / sqrt_N_SS[None,:]
-
-
-                    # white noise only
-                    xNx     +=  DPA_whiten @ DPA_whiten
-      
-                    # axion related
-                    FM[P*2 : P*2+2 , iPAR : iPAR+ORDER_SS ] = F_whiten @ M_whiten.T
-                    FNF_psr +=  F_whiten @ F_whiten.T
-                    Fx_psr  +=  F_whiten @ DPA_whiten
-                    
-
-                    # M related
-                    MNM[iPAR : iPAR+ORDER_SS,iPAR : iPAR+ORDER_SS] = M_whiten @ M_whiten.T
-                    Mx[iPAR : iPAR+ORDER_SS] = M_whiten @ DPA_whiten
-
-
-                    # End
-                    iSS += 1
-                    iPAR += ORDER_SS
-
-                FNF[ P*2 : P*2+2 , P*2 : P*2+2 ] = FNF_psr
-                Fx[  P*2 : P*2+2 ]               = Fx_psr
-
-
-            Phi_inv,Phi_logdet = svd_inv(Phi)
-            PhiFNF = Phi_inv + FNF
-            PhiFNF_inv,PhiFNF_logdet = svd_inv(PhiFNF)
-
-            # For white noise
-            lnl_white = -0.5 * xNx  - 0.5*N_logdet  - 0.5 * np.log( 2*np.pi ) * NOBS_TOTAL
-
-            # For axion signal
-            lnl_axion = -0.5 * ( -Fx.T @ PhiFNF_inv @ Fx )  - 0.5 * ( Phi_logdet + PhiFNF_logdet )
-
-            # For marginalization
-            
-            MCM = MNM - FM.T @ PhiFNF_inv @ FM 
-            MCx = Mx -  FM.T @ PhiFNF_inv @ Fx
-            MCM_inv , MCM_logdet = svd_inv(MCM)
-            
-            
-            lnl_M = 0.5 * MCx.T @ MCM_inv @ MCx - 0.5 * MCM_logdet  + 0.5 * np.log( 2*np.pi ) * ALL_ORDERS
-
-            print(lnl_white,lnl_axion,lnl_M)
-            #print(MCx.T @ MCM_inv @ MCx , MCM_logdet)
-
-            return lnl_white + lnl_axion + lnl_M
-
-
-
-"""
