@@ -181,7 +181,7 @@ def lnlike( all_params ):
     if nmodel < 0:
         lnlike_val =  lnlike_sig0( all_params[1:] )
     elif nmodel >= 0:
-        lnlike_val =  lnlike_sig1( all_params[1:] ) 
+        lnlike_val =  lnlike_sig1( all_params[1:] )
     return lnlike_val
 
 
@@ -260,7 +260,7 @@ for ipsr in range(NPSR):
     groups.append(g)
 
 cov = np.diag(np.ones(len(init)))
-sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=True, outDir = name )
+sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=False, outDir = name )
 sampler.sample(np.array(init),5000000,thin=50)
 
 

@@ -28,6 +28,8 @@ def svd_inv( M ):
         return u @ np.diag(1/s) @ v , np.inf
     else:
         return u @ np.diag(1/s) @ v , np.sum(np.log(s))
+    
+
 
 
 #=========================================================#
@@ -392,7 +394,8 @@ class Array():
                         ADM_Phi_compact[ pointer_x:pointer_x+2 , pointer_y:pointer_y+2 ] = Phi_pq
                         pointer_y += 2
                     pointer_x += 2
-                ADM_Phi_inv_compact , ADM_Phi_logdet = svd_inv(ADM_Phi_compact)
+                #ADM_Phi_inv_compact , ADM_Phi_logdet = svd_inv(ADM_Phi_compact)
+                ADM_Phi_inv_compact = sl.inv(ADM_Phi_compact) ; ADM_Phi_logdet = nl.slogdet(ADM_Phi_compact)[1]
                 Phi_logdet += ADM_Phi_logdet
 
                 # now put everything together
@@ -633,7 +636,8 @@ class Array():
             
 
             PhiFNF = Phi_inv + FNF
-            PhiFNF_inv,PhiFNF_logdet = svd_inv(PhiFNF)
+            #PhiFNF_inv,PhiFNF_logdet = svd_inv(PhiFNF)
+            PhiFNF_inv = sl.inv(PhiFNF) ; PhiFNF_logdet = nl.slogdet(PhiFNF)[1]
 
             lnl_white = -0.5 * xNx  - 0.5*N_logdet  - 0.5 * np.log( 2*np.pi ) * NOBS_TOTAL
             lnl_corr = -0.5 * ( -Fx.T @ PhiFNF_inv @ Fx )  - 0.5 * ( Phi_logdet + PhiFNF_logdet )
@@ -643,11 +647,14 @@ class Array():
             
             MCM = MNM - FM.T @ PhiFNF_inv @ FM 
             MCx = Mx -  FM.T @ PhiFNF_inv @ Fx
-            MCM_inv , MCM_logdet = svd_inv(MCM)
+            #MCM_inv , MCM_logdet = svd_inv(MCM)
+            MCM_inv = sl.inv(MCM) ; MCM_logdet = nl.slogdet(MCM)[1]
 
             lnl_M = 0.5 * MCx.T @ MCM_inv @ MCx - 0.5 * MCM_logdet  + 0.5 * np.log( 2*np.pi ) * ALL_ORDERS
 
-            return lnl_white  + lnl_corr + lnl_M
+            lnl = lnl_white  + lnl_corr + lnl_M
+            #print(lnl)
+            return  lnl
                 
                 
                     
