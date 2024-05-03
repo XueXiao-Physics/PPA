@@ -13,6 +13,7 @@ KPC_TO_S = sc.parsec*1e3/sc.c
 TREF = 54550.
 EARTH_TO_GC= 8.3
 GC_LOC = np.array([-0.45545384, -7.24952861, -4.01583076])
+FYR = 1/sc.year
 
 def get_lc( v , ma ):
     lc = sc.hbar * sc.c / sc.eV / v / sc.parsec*1e-3 / ma
@@ -21,7 +22,8 @@ def get_lc( v , ma ):
 def svd_inv( M ):
     
     u,s,v = nl.svd( M , hermitian=True )
-    if (s<0).any() :#or s.max()/s.min()>1e15 :
+    #print( "%.1e"%(s.max()/s.min()))
+    if (s<0).any() :
         return u @ np.diag(1/s) @ v , np.inf
     else:
         return u @ np.diag(1/s) @ v , np.sum(np.log(s))
@@ -90,7 +92,7 @@ def Load_All_Pulsar_Info():
 #=========================================================#
 class Pulsar():
 
-    def __init__( self, PSR_DICT , order=None , iono=None , subset="all" ):
+    def __init__( self, PSR_DICT , order=None , iono=None , nfreqs=5 , subset="all" ):
         self.PSR_NAME = PSR_DICT["PSR"]
         #self.import_psr()
 
@@ -121,6 +123,8 @@ class Pulsar():
         self.DPA_ERR = []
         self.NOBS = []
         self.DES_MTX = []
+        self.F_RED = []
+        self.FREQS = []
         self.RM = []
         self.RM_ERR = []
         self.WAVE_LENGTH = []
@@ -130,20 +134,23 @@ class Pulsar():
             TOA2,  RM , RM_ERR = np.loadtxt( PSR_DICT["RM"][SS] )
             # Finding overlap TOA
             TOA , idx1 , idx2 = np.intersect1d(TOA1,TOA2, return_indices=True)
+            
             DPA = DPA[idx1]
             DPA_ERR = DPA_ERR[idx1]
             RM = RM[idx2]
             RM_ERR = RM_ERR[idx2]
 
+            TOA = TOA - TREF
             NOBS = len(TOA)
-            if order in [ 0 , 1 , 2 ]:
-                DES_MTX = self.get_design_matrix( TOA , order =  order )
-            else:
-                print("ISM marginalizasion order: 0, 1 or 2")
-                raise
+            DES_MTX = self.get_design_matrix( TOA , order =  order )
+            
+            FREQS , F_RED = self.get_F_red( TOA , nfreqs = nfreqs )
+            self.F_RED.append(F_RED)
+            self.FREQS.append(FREQS)
 
-
-            self.TOA.append(TOA-TREF)
+            
+            
+            self.TOA.append(TOA)
             self.NOBS.append(NOBS)
             self.DES_MTX.append(DES_MTX)
             self.RM.append(RM)
@@ -173,70 +180,48 @@ class Pulsar():
     
     def get_design_matrix( self , TOA , order = 2 ):
 
-        TOA_mid = ( TOA.max() + TOA.min() ) / 2
-        TOA_interval = ( TOA.max() - TOA.min() )
-        TOA_normalized = ( TOA - TOA_mid ) / TOA_interval
+        if order in [ 0 , 1 , 2 ]:
 
-        vec1 = TOA_normalized / TOA_normalized
-        vec2 = TOA_normalized
-        vec3 = TOA_normalized ** 2
+            TOA_mid = ( TOA.max() + TOA.min() ) / 2
+            TOA_interval = ( TOA.max() - TOA.min() )
+            TOA_normalized = ( TOA - TOA_mid ) / TOA_interval
 
-        DES_MTX = np.array( [vec1 , vec2 , vec3] )     
-        
-        return DES_MTX[:order+1,:]          
+            vec1 = TOA_normalized / TOA_normalized
+            vec2 = TOA_normalized
+            vec3 = TOA_normalized ** 2
 
-
-
-
-    def gen_spa_likelihood( self , SS , p=[-2,2,-8,2 ] ):
-
-        SS_IDX = self.SUBSETS.index(SS)
-        DPA = self.DPA[SS_IDX]
-        DPA_ERR = self.DPA_ERR[SS_IDX]
-        NOBS = self.NOBS[SS_IDX]
-        DES_MTX = self.DES_MTX[SS_IDX]
-        def lnlike( params ):
-            l10_EFAC , l10_EQUAD  = params
-            EFAC = 10**l10_EFAC
-            EQUAD = 10**l10_EQUAD
-            DPA_ERR_NEW_SQ = ( EFAC * DPA_ERR )**2 + EQUAD**2
-            DPA_ERR_NEW = np.sqrt( DPA_ERR_NEW_SQ )
-
-            # original likelihood
-            DPA_whiten = DPA / DPA_ERR_NEW
-            lnl_original = - 0.5 * np.sum( DPA_whiten**2  ) - 0.5 * np.sum( np.log( DPA_ERR_NEW_SQ ) ) -  0.5  * np.log(2*np.pi) * NOBS
-
-            # after marginalization
-
-            DES_MTX_whiten = DES_MTX / DPA_ERR_NEW[None,:]
-            MCM =  DES_MTX_whiten @ DES_MTX_whiten.T
-            MCM_inv , MCM_logdet = svd_inv( MCM )
-
-            DPA_DES = DPA_whiten @ DES_MTX_whiten.T
-            lnl_marginalized = 0.5 * DPA_DES @ MCM_inv @ DPA_DES.T - 0.5 * MCM_logdet +  0.5  * np.log(2*np.pi) * len(DES_MTX)
-
-
-            return lnl_original + lnl_marginalized
+            DES_MTX = np.array( [vec1 , vec2 , vec3] )     
             
-        l10_EFAC_prior,l10_EFAC_prior_sampler = gen_uniform_lnprior(p[0],p[1])
-        l10_EQUAD_prior,l10_EQUAD_sampler = gen_uniform_lnprior(p[2],p[3])
+            return DES_MTX[:order+1,:]
         
-        def lnprior( params ):
-            l10_EFAC , l10_EQUAD  = params
-            return l10_EFAC_prior(l10_EFAC)  + l10_EQUAD_prior(l10_EQUAD) 
-        
-        def init_gen():
-            init = np.array( [l10_EFAC_prior_sampler() , l10_EQUAD_sampler()] )
-            return init
+        else:
+            print("ISM marginalizasion order: 0, 1 or 2")
+            raise
+  
 
-        return lnlike,lnprior,init_gen
+
+    def get_F_red(self , TOA , nfreqs = 0):
+        
+        if nfreqs > 0 and type(nfreqs)==int :
+            F_red = np.zeros( ( nfreqs*2 , len(TOA)) )
+            t = TOA * sc.day
+            T = ( t.max() - t.min() )
+            freqs = 1 / T * np.arange(1,1+nfreqs)
+            if nfreqs > 0:
+                for i in range( nfreqs ):
+                    F_red[2*i,:]   = np.cos( 2 * np.pi * freqs[i] * t )
+                    F_red[2*i+1,:] = np.sin( 2 * np.pi * freqs[i] * t )
+            return freqs , F_red
+        
+        else:
+            return np.array([]),np.empty((0,len(TOA)))
 
 
 
 
 
 #=========================================================#
-#    For an list of "Pulsar" objects, make an array       #
+#    Form a list of "Pulsar" objects, make an array       #
 #=========================================================#
 
 class Array():
@@ -261,13 +246,65 @@ class Array():
         self.TOA = [psr.TOA for psr in Pulsars]
         self.DPA = [psr.DPA for psr in Pulsars]
         self.DPA_ERR = [psr.DPA_ERR for psr in Pulsars]
-        #self.DES_MTX = np.array( [ psr.DES_MTX for psr in Pulsars ] , dtype=np.ndarray )
         self.DES_MTX = [ psr.DES_MTX for psr in Pulsars ] 
+        self.F_RED = [ psr.F_RED for psr in Pulsars]
+        self.FREQS = [ psr.FREQS for psr in Pulsars]
+        self.NFREQS = [[ len(x) for x in xs] for xs in self.FREQS  ]
+
 
 
         self.NSUBSETS_by_SS = [ len(SUBSETS) for SUBSETS in self.SUBSETS]
         self.NSUBSETS_TOTAL = np.sum(self.NSUBSETS_by_SS)
 
+
+
+        self.F_RED_COMBINED = self.Get_Red_F()
+        
+
+
+
+    #  It is to put the red noise Phi into a diagonal matrix
+    def Get_Red_Phi_Vec( self  ,   all_phi ):
+        
+        # Generate a base matrix
+        ndim_by_psr = [ 2*np.sum(x)+2 for x in self.NFREQS ]
+        
+        Phi_vec = np.zeros( np.sum( ndim_by_psr )  )
+        pointer = 0
+        iss = 0
+        for p in range(self.NPSR):
+            # For Phi
+            pointer = pointer + 2
+            for ss in range(self.NSUBSETS_by_SS[p]):
+                Phi_vec[ pointer  : pointer +  self.NFREQS[p][ss]*2 ] = all_phi[iss]
+                pointer = pointer + self.NFREQS[p][ss]*2
+                iss += 1
+
+        return Phi_vec 
+    
+
+    #=====================================================#
+    #    Get F for red noises, pre-calculated             #
+    #=====================================================#
+    def Get_Red_F(self):       
+        ndim_by_psr = [ 2*np.sum(x)+2 for x in self.NFREQS ] 
+        F_RED_COMBINED = []
+
+        for p in range(self.NPSR):
+            pointer_x = 2
+            pointer_y = 0
+            F = np.zeros( ( ndim_by_psr[p] , np.sum(self.NOBS[p]) ) )
+            for ss in range(self.NSUBSETS_by_SS[p]):
+                dx = self.NFREQS[p][ss]*2
+                dy = self.NOBS[p][ss]
+                F[pointer_x:pointer_x +  dx,pointer_y:pointer_y + dy] = self.F_RED[p][ss]
+
+                
+                pointer_x += dx
+                pointer_y += dy
+            F_RED_COMBINED.append(F)
+
+        return F_RED_COMBINED
 
 
 
@@ -294,7 +331,8 @@ class Array():
     #=====================================================#
 
 
-    def Get_Sigma( self , v , ma, sDTE ):
+
+    def Get_ADM_Phi( self , v , ma, sDTE ):
         
         DTE = self.DTE0 * sDTE
         PSR_POS , DL_MTX = self.Get_Star_Locations( sDTE )
@@ -313,9 +351,14 @@ class Array():
 
         Phi_blocks = np.zeros((self.NPSR,self.NPSR),dtype=np.ndarray)
 
-        for p in range(self.NPSR):
-            for q in range(self.NPSR):
+    
+        ndim_by_psr = [ 2*np.sum(x)+2 for x in self.NFREQS ] 
+        ADM_Phi = np.zeros( ( np.sum(ndim_by_psr) , np.sum(ndim_by_psr)) )
 
+        pointer_x = 0
+        for p in range(self.NPSR):
+            pointer_y = 0
+            for q in range(self.NPSR):
                 sincpq = sincpq_all[p,q]
                 sincp = sincp_all[p]
                 sincq = sincp_all[q]
@@ -332,33 +375,34 @@ class Array():
                 Phi_cs = -Phi_sc
 
                 Phi_pq = np.array([[Phi_ccss,Phi_cs],[Phi_sc,Phi_ccss]]) 
+                ADM_Phi[ pointer_x:pointer_x+2 , pointer_y:pointer_y+2 ] = Phi_pq
+                pointer_y += ndim_by_psr[q]
+            pointer_x += ndim_by_psr[p]
 
-                Phi_blocks[p,q] = Phi_pq.copy()
 
-        return Phi_blocks
+                #Phi_blocks[p,q] = Phi_pq.copy()
 
-    def Get_F(self,ma):
+        return ADM_Phi
 
-        F_matrix = np.zeros(shape = (self.NPSR*2,self.NOBS_TOTAL))
-        F_blocks_bysubsets = []
+    def Get_ADM_F(self,ma):
+        # added based on the red noise F
+
         omega = ma*sc.eV/sc.hbar
-        NTOT = 0
+        F_COMBINED = self.F_RED_COMBINED.copy()
+        for p in range(self.NPSR):
+            pointer = 0
+            for ss in range( self.NSUBSETS_by_SS[p] ):
 
-        for P in range(self.NPSR):
-            for S in range( self.NSUBSETS_by_SS[P] ):
+                NOBS = self.NOBS[p][ss]
+                t = self.TOA[p][ss] * sc.day
+                F_COMBINED[p][ 0 , pointer:pointer+NOBS] = np.cos(omega * t.astype(np.float64))
+                F_COMBINED[p][ 1 , pointer:pointer+NOBS] = np.cos(omega * t.astype(np.float64))
 
-                NOBS = self.NOBS[P][S]
-                t = self.TOA[P][S] * sc.day
-                Fcos = np.cos(omega * t.astype(np.float64))
-                Fsin = np.sin(omega * t.astype(np.float64))
-                Fss = np.vstack([Fcos,Fsin])
-                F_blocks_bysubsets.append(Fss)
-                F_matrix[ P*2 : P*2 + 2 , NTOT : NTOT + NOBS] = Fss.copy()
-
-                NTOT += NOBS
+                pointer += NOBS
             
 
-        return F_matrix  , F_blocks_bysubsets
+        #return F_matrix  , F_blocks_bysubsets
+        return F_COMBINED
     
     #=====================================================#
     #    Load Bestfit parameters                          #
@@ -416,10 +460,10 @@ class Array():
         DPA_white = self.Gen_White_Mock_Data(seed=seed)
 
         # Get core matrix Phi
-        _Phi = self.Get_Sigma( 1e-3 , 10**mock_lma ,np.ones(self.NSUBSETS_TOTAL) )
+        _Phi = self.Get_Phi( 1e-3 , 10**mock_lma ,np.ones(self.NSUBSETS_TOTAL) )
         _Phi_Full = np.block( _Phi.tolist() )  
         _Phi_Auto = np.diag( np.diag( _Phi_Full) )
-        F,F_by_SS = self.Get_F( 10**mock_lma )
+        F_by_SS = self.Get_F_adm( 10**mock_lma )
 
         # Gen mock data
         if method == "auto":
@@ -458,13 +502,16 @@ class Array():
 
         DPA_ERR_by_SS = np.array([ x for xs in self.DPA_ERR for x in xs] ,dtype=np.ndarray)
         DPA_by_SS = [ x for xs in self.DPA for x in xs] 
+
         DES_MTX_by_SS = [ x for xs in self.DES_MTX for x in xs] 
         ORDERS_by_SS = [ len(x) for x in DES_MTX_by_SS ]
+
+        FREQS_by_SS = [ x for xs in self.FREQS for x in xs]
 
         NOBS_TOTAL = self.NOBS_TOTAL
         ALL_ORDERS = np.sum(ORDERS_by_SS)
         
-        def lnlikelihood( l10_EFAC , l10_EQUAD  , sDTE  , l10_ma , l10_Sa ):
+        def lnlikelihood( l10_EFAC , l10_EQUAD  ,  l10_S0red , Gamma , sDTE  , l10_ma , l10_Sa ):
 
             #=============================================#
             #     Mapping Paramaters                      #
@@ -473,74 +520,174 @@ class Array():
             EQUAD = 10 ** l10_EQUAD
             ma = 10 ** l10_ma
             Sa = 10 ** l10_Sa
+            S0red = 10 ** l10_S0red
 
             #=============================================#
             #     White Noise                             #
             #=============================================#
-
             N_by_SS = ( DPA_ERR_by_SS * EFAC ) ** 2 + EQUAD ** 2
             N_logdet = np.sum( np.log( np.concatenate( N_by_SS ).astype(np.float64) ) )
 
+            #=============================================#
+            #     Red Noise                               #
+            #=============================================#
+            Factors_red = [  np.repeat( (FREQS_by_SS[i]/FYR)**Gamma[i] * S0red[i]**2 ,2) for i in range(self.NSUBSETS_TOTAL)]
 
             #=============================================#
-            #     Axion Signal                            #
+            #     Phi, Axion and Red                      #
             #=============================================#
-            _Phi = self.Get_Sigma( 1e-3 , ma , sDTE)
-            _Phi_Full = np.block( _Phi.tolist() )  
-            _Phi_Auto = np.diag( np.diag(_Phi_Full) )
+            _Phi_ADM = self.Get_ADM_Phi( 1e-3 , ma , sDTE)
+            _Phi_ADM_Full = np.block( _Phi_ADM.tolist() )  
+            _Phi_ADM_Auto = np.diag( np.diag(_Phi_ADM_Full) )
 
             if method == "Full":
-                Phi = _Phi_Full * Sa**2
+                Phi_ADM = _Phi_ADM_Full * Sa**2
             elif method == "Auto":
-                Phi = _Phi_Auto * Sa**2
+                Phi_ADM = _Phi_ADM_Auto * Sa**2
             elif method == "None":
-                Phi = _Phi_Auto * 1e-99
+                Phi_ADM = _Phi_ADM_Auto * 1e-99
             else:
                 raise
 
-            F,F_by_SS = self.Get_F( ma )
+            Phi_RED = np.diag(self.Get_Red_Phi_Vec(Factors_red))
+
+            Phi = Phi_ADM + Phi_RED
+
+
             
+
+            F_by_SS = self.Get_ADM_F( ma )
+
 
 
             #=============================================#
             #     For marginalization                     #
             #=============================================#
 
+            xNx = 0
+            Fx = []
+            FM = []
+            FNF = []
+            MNM = []
+            Mx = []
+            iss=0
+            for p in range(self.NPSR):
+                nss = self.NSUBSETS_by_SS[p]
+                NEW_DPA_ERR = np.sqrt(np.concatenate( N_by_SS[iss:iss+nss] ))
+                DPA = np.concatenate( DPA_by_SS[iss:iss+nss] )
+                M = sl.block_diag( *self.DES_MTX[p] ).T
 
-            iSS = 0
-            iPAR = 0
+                # whiten everything
+                F_whiten   = F_by_SS[p]/ NEW_DPA_ERR[None,:]
+                DPA_whiten = DPA       / NEW_DPA_ERR
+                M_whiten   = M         / NEW_DPA_ERR[:,None] 
 
-            FNF = np.zeros( ( self.NPSR*2 , self.NPSR*2 ) )
-            Fx  = np.zeros( ( self.NPSR*2  ) )
-            FM  = np.zeros( ( self.NPSR*2 , ALL_ORDERS ) )
-            MNM = np.zeros( ( ALL_ORDERS , ALL_ORDERS ) )
-            Mx  = np.zeros( ( ALL_ORDERS ) )
+                # get basic values
+                xNx += DPA_whiten@DPA_whiten
+                Fx.append( F_whiten @ DPA_whiten )
+                FM.append( F_whiten @ M_whiten )
+                FNF.append( F_whiten @ F_whiten.T )
+
+                # for M
+                MNM.append(  M_whiten.T @ M_whiten )
+                Mx.append( M_whiten.T @ DPA_whiten )
+
+                # end
+                iss+=nss
+            
+            FNF = sl.block_diag(*FNF)
+            MNM = sl.block_diag(*MNM)
+            FM  = sl.block_diag(*FM)
+            Mx = np.concatenate(Mx)
+            Fx = np.concatenate(Fx)
+            #print(FNF.shape,MNM.shape,FM.shape,Mx.shape,Fx.shape)
+
+            #=============================================#
+            #     Combine                                 #
+            #=============================================#
+            
+            
+            Phi_inv, Phi_logdet = svd_inv(Phi)
+            PhiFNF = Phi_inv + FNF
+            PhiFNF_inv,PhiFNF_logdet = svd_inv(PhiFNF)
+
+            lnl_white = -0.5 * xNx  - 0.5*N_logdet  - 0.5 * np.log( 2*np.pi ) * NOBS_TOTAL
+            lnl_corr = -0.5 * ( -Fx.T @ PhiFNF_inv @ Fx )  - 0.5 * ( Phi_logdet + PhiFNF_logdet )
+
+
+            # For marginalization
+            
+            MCM = MNM - FM.T @ PhiFNF_inv @ FM 
+            MCx = Mx -  FM.T @ PhiFNF_inv @ Fx
+            MCM_inv , MCM_logdet = svd_inv(MCM)
+
+            lnl_M = 0.5 * MCx.T @ MCM_inv @ MCx - 0.5 * MCM_logdet  + 0.5 * np.log( 2*np.pi ) * ALL_ORDERS
+
+            return lnl_white  + lnl_corr + lnl_M
+                
+                
+                    
+
+        return lnlikelihood
+
+
+
+
+"""
+            #=============================================#
+            #     For marginalization                     #
+            #=============================================#
+
+
+            # For White noise
             xNx = 0
 
+            # For axion signal
+            FNF = np.zeros( ( self.NPSR*2 , self.NPSR*2 ) )
+            Fx  = np.zeros( ( self.NPSR*2  ) )
+            FM  = np.zeros( ( self.NPSR*2 , ALL_ORDERS ) ) 
+
+            # For M and N
+            MNM = np.zeros( ( ALL_ORDERS , ALL_ORDERS ) )
+            Mx  = np.zeros( ( ALL_ORDERS ) )
+
+
+            # Start the loop
+            iSS = 0
+            iPAR = 0
             for P in range(self.NPSR):
                 FNF_psr = np.zeros((2,2))
                 Fx_psr = np.zeros(2)
-                for i in range(self.NSUBSETS_by_SS[P]):
+                for ii in range(self.NSUBSETS_by_SS[P]):
 
                     ORDER_SS = ORDERS_by_SS[iSS]
                     DPA_SS = DPA_by_SS[iSS].astype(np.float64) 
                     F_SS = F_by_SS[iSS].astype(np.float64)
+
                     sqrt_N_SS = np.sqrt( N_by_SS[iSS].astype(np.float64) )
                     M_SS = DES_MTX_by_SS[iSS].astype(np.float64)
                     
- 
+                    # Whiten
                     DPA_whiten     = DPA_SS     / sqrt_N_SS
                     F_whiten       = F_SS       / sqrt_N_SS[None,:]
                     M_whiten       = M_SS       / sqrt_N_SS[None,:]
 
+
+                    # white noise only
+                    xNx     +=  DPA_whiten @ DPA_whiten
+      
+                    # axion related
                     FM[P*2 : P*2+2 , iPAR : iPAR+ORDER_SS ] = F_whiten @ M_whiten.T
+                    FNF_psr +=  F_whiten @ F_whiten.T
+                    Fx_psr  +=  F_whiten @ DPA_whiten
+                    
+
+                    # M related
                     MNM[iPAR : iPAR+ORDER_SS,iPAR : iPAR+ORDER_SS] = M_whiten @ M_whiten.T
                     Mx[iPAR : iPAR+ORDER_SS] = M_whiten @ DPA_whiten
 
-                    xNx     +=  DPA_whiten @ DPA_whiten
-                    FNF_psr +=  F_whiten @ F_whiten.T
-                    Fx_psr  +=  F_whiten @ DPA_whiten
 
+                    # End
                     iSS += 1
                     iPAR += ORDER_SS
 
@@ -551,24 +698,27 @@ class Array():
             Phi_inv,Phi_logdet = svd_inv(Phi)
             PhiFNF = Phi_inv + FNF
             PhiFNF_inv,PhiFNF_logdet = svd_inv(PhiFNF)
+
+            # For white noise
+            lnl_white = -0.5 * xNx  - 0.5*N_logdet  - 0.5 * np.log( 2*np.pi ) * NOBS_TOTAL
+
+            # For axion signal
+            lnl_axion = -0.5 * ( -Fx.T @ PhiFNF_inv @ Fx )  - 0.5 * ( Phi_logdet + PhiFNF_logdet )
+
+            # For marginalization
             
-            xCx = xNx - Fx.T @ PhiFNF_inv @ Fx
-            MCM = MNM - FM.T @PhiFNF_inv @ FM
+            MCM = MNM - FM.T @ PhiFNF_inv @ FM 
             MCx = Mx -  FM.T @ PhiFNF_inv @ Fx
             MCM_inv , MCM_logdet = svd_inv(MCM)
             
-
-            All_logdet = Phi_logdet + PhiFNF_logdet + N_logdet
-
-            lnl_original = -0.5 * xCx - 0.5 * All_logdet - 0.5 * np.log( 2*np.pi ) * NOBS_TOTAL
             
-            lnl_marginalized = 0.5 * MCx.T @ MCM_inv @ MCx - 0.5 * MCM_logdet  + 0.5 * np.log( 2*np.pi ) * ALL_ORDERS
+            lnl_M = 0.5 * MCx.T @ MCM_inv @ MCx - 0.5 * MCM_logdet  + 0.5 * np.log( 2*np.pi ) * ALL_ORDERS
+
+            print(lnl_white,lnl_axion,lnl_M)
+            #print(MCx.T @ MCM_inv @ MCx , MCM_logdet)
+
+            return lnl_white + lnl_axion + lnl_M
 
 
 
-            return lnl_original + lnl_marginalized
-
-
-
-        return lnlikelihood
-
+"""

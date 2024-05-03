@@ -8,11 +8,12 @@ import time
 
 mock_method = "data"
 
-dlnprior = "\" 3\""
+dlnprior = "\" 0\""
 order = "2"
 iono = "subt"#"Subt"
 subset = "10cm"
-bf = "nf"
+model = "f"
+nfreqs = "3"
 
 def run(ipsr=-1,Range=range(0,51)):
     for lma_idx in Range:
@@ -26,11 +27,12 @@ def run(ipsr=-1,Range=range(0,51)):
              + f" -dlnprior " + dlnprior\
              + f" -iono " + iono\
              + f" -subset " + subset\
-             + f" -bf " + bf\
+             + f" -model " + model\
+             + f" -nfreqs " + nfreqs\
              +  " -pulsar " + str(ipsr)   
         os.system(argument + " &")
 
-run()
+run(Range=[10])
 #run( Range = [ 5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 21, 47, 50, 52, 53, 54])
 #run()
 #for ipsr in range(8,22):

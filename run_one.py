@@ -30,7 +30,8 @@ parser.add_argument("-mock_lSa"    , action = "store" , type = float , default =
 parser.add_argument("-pulsar"      , action = "store" , type = int , default="-1" )
 parser.add_argument("-iono"        , action = "store", choices=["none","subt"] , default='subt')
 parser.add_argument("-subset"      , action = "store", choices=["10cm","20cm","all"] , default = "all" )
-parser.add_argument("-bf"          , action = "store", choices = ["af" , "na" , "nf"] , default = "af" )
+parser.add_argument("-model"        , action = "store", choices = ["af" , "na" , "nf","a","n","f"] , default = "af" )
+parser.add_argument("-nfreqs"       , action = "store", type = int , default="0" )
 
 args = parser.parse_args()
 
@@ -38,11 +39,13 @@ args = parser.parse_args()
 #    Load the pulsars                                 #
 #=====================================================#
 tag = args.mock_method
-tag += f"_d{args.dlnprior:.0f}_O{args.order}_i" + args.iono + "_" + args.subset + "_"
+tag += f"_d{args.dlnprior:.0f}_o{args.order}_r{args.nfreqs}_i" + args.iono  + "_" + args.subset + "_"
 
 PSR_DICT = ppa.Load_All_Pulsar_Info()
 
-pulsars = [ ppa.Pulsar( PSR_DICT[psrn] , order = args.order , iono = args.iono , subset=args.subset ) for psrn in PSR_DICT ]
+pulsars = [ ppa.Pulsar( PSR_DICT[psrn] , order = args.order \
+                       , iono = args.iono , subset=args.subset \
+                        , nfreqs=args.nfreqs ) for psrn in PSR_DICT ]
 
 
 PSR_NAME_LIST = [psr.PSR_NAME for psr in pulsars]
@@ -81,13 +84,22 @@ else:
 
 ones = np.ones(array.NPSR)
 zeros = np.zeros(array.NPSR)
-if args.bf == "af":
+if args.model == "n":
+    lnlike_sig0_raw = array.Generate_Lnlike_Function( method="None" )
+    lnlike_sig1_raw = array.Generate_Lnlike_Function( method="None" )
+elif args.model == "a":
+    lnlike_sig0_raw = array.Generate_Lnlike_Function( method="Auto" )
+    lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Auto" )
+elif args.model == "f":
+    lnlike_sig0_raw = array.Generate_Lnlike_Function( method="Full" )
+    lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Full" )
+elif args.model == "af":
     lnlike_sig0_raw = array.Generate_Lnlike_Function( method="Auto" )
     lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Full" )
-elif args.bf == "na":
+elif args.model == "na":
     lnlike_sig0_raw = array.Generate_Lnlike_Function( method="None" )
     lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Auto" )
-elif args.bf == "nf":
+elif args.model == "nf":
     lnlike_sig0_raw = array.Generate_Lnlike_Function( method="None" )
     lnlike_sig1_raw = array.Generate_Lnlike_Function( method="Full" )
 else:
@@ -95,7 +107,7 @@ else:
 NSS = np.sum( array.NSUBSETS_by_SS )
 NPSR = array.NPSR
 
-tag += args.bf + "_"
+tag += args.model + "_"
 tag += f"Np{NPSR}"
 #print(tag)
 
@@ -107,11 +119,13 @@ def Mapper(params):
 
     l10_EFAC = params[:NSS]
     l10_EQUAD = params[NSS:2*NSS]
-    sDTE = params[2*NSS : 2*NSS+NPSR]
-    l10_ma = params[2*NSS+NPSR ]
-    l10_Sa = params[2*NSS+NPSR + 1]
+    l10_S0 = params[2*NSS:3*NSS]
+    Gamma = params[3*NSS:4*NSS]
+    sDTE = params[4*NSS : 4*NSS+NPSR]
+    l10_ma = params[4*NSS+NPSR ]
+    l10_Sa = params[4*NSS+NPSR + 1]
 
-    return l10_EFAC , l10_EQUAD ,  sDTE  , l10_ma , l10_Sa
+    return l10_EFAC , l10_EQUAD , l10_S0 , Gamma , sDTE  , l10_ma , l10_Sa
 
 
 #=====================================================#
@@ -135,20 +149,25 @@ def lnlike_sig1( params ):
 
 l10_EFAC_lp , l10_EFAC_sp = ppa.gen_uniform_lnprior(-2,2)
 l10_EQUAD_lp , l10_EQUAD_sp = ppa.gen_uniform_lnprior(-8,2)
+l10_S0_lp , l10_S0_sp = ppa.gen_uniform_lnprior(-8,2)
+Gamma_lp    , Gamma_sp = ppa.gen_uniform_lnprior(-2,0)
 sDTE_lp = array.sDTE_LNPRIOR
 l10_ma_lp , l10_ma_sp = ppa.gen_uniform_lnprior(args.lma_min,args.lma_max)
 l10_Sa_lp , l10_Sa_sp = ppa.gen_uniform_lnprior(-8,2)
 
 def lnprior_nonmodel( params ):
-    l10_EFAC , l10_EQUAD ,  sDTE , l10_ma , l10_Sa =  Mapper( params )
+    l10_EFAC , l10_EQUAD , l10_S0 , Gamma,  sDTE , l10_ma , l10_Sa =  Mapper( params )
 
     LP_1 = np.sum( [l10_EFAC_lp(l10_EFAC[i]) for i in range(NSS)] )
     LP_2 = np.sum( [l10_EQUAD_lp(l10_EQUAD[i]) for i in range(NSS)] )
-    LP_3 = np.sum(  [sDTE_lp[i](sDTE[i]) for i in range(NPSR)]  )
-    LP_4 = l10_ma_lp( l10_ma )
-    LP_5 = l10_Sa_lp( l10_Sa ) 
+    LP_3 = np.sum( [l10_S0_lp(l10_S0[i]) for i in range(NSS)] )
+    LP_4 = np.sum( [Gamma_lp(Gamma[i]) for i in range(NSS)] )
 
-    return  np.sum([LP_1,LP_2,LP_3,LP_4,LP_5])
+    LP_5 = np.sum(  [sDTE_lp[i](sDTE[i]) for i in range(NPSR)]  )
+    LP_6 = l10_ma_lp( l10_ma )
+    LP_7 = l10_Sa_lp( l10_Sa ) 
+
+    return  np.sum([LP_1,LP_2,LP_3,LP_4,LP_5,LP_6,LP_7])
 
 
 
@@ -199,7 +218,13 @@ def get_init():
 
     #l10_EFAC_bf , l10_EQUAD_bf = array.Load_bestfit_params( )
     sDTE = np.random.rand(len(ones))*0.1 + 1 - 0.05
-    init_val = [nmodel_sp()] +[l10_EFAC_sp() for i in range(NSS)] + [l10_EQUAD_sp() for i in range(NSS)]   + sDTE.tolist()  + [l10_ma_sp()] + [l10_Sa_sp()]
+    init_val = [nmodel_sp()] +[l10_EFAC_sp() for i in range(NSS)]\
+                             + [l10_EQUAD_sp() for i in range(NSS)]\
+                             + [l10_S0_sp() for i in range(NSS)]\
+                             + [Gamma_sp() for i in range(NSS)]\
+                             + sDTE.tolist()\
+                             + [l10_ma_sp()]\
+                             + [l10_Sa_sp()]
     return np.array(init_val)
         
 
@@ -220,7 +245,7 @@ name = predir + tag +  f"/bin_{args.lma_min:.2f}_{args.lma_max:.2f}"
 init = get_init()
 print( lnlike(init))
 
-groups = [np.arange(len(init)) , [0, 2*NSS+NPSR+1 , 2*NSS+NPSR + 2  ]]
+groups = [np.arange(len(init)) , [0, 4*NSS+NPSR+1 , 4*NSS+NPSR + 2  ]]
 
 iss = 1
 for ipsr in range(NPSR):
@@ -228,13 +253,15 @@ for ipsr in range(NPSR):
     nss = len( array.SUBSETS[ipsr] )
     g += np.arange(iss,iss+nss).tolist()
     g += np.arange(iss+NSS,iss+nss+NSS).tolist()
-    g += [1+2*NSS+ipsr]
+    g += np.arange(iss+2*NSS,iss+nss+2*NSS).tolist()
+    g += np.arange(iss+3*NSS,iss+nss+3*NSS).tolist()
+    g += [1+4*NSS+ipsr]
     iss += nss
     groups.append(g)
 
 cov = np.diag(np.ones(len(init)))
-sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=False, outDir = name )
-sampler.sample(np.array(init),5000000,thin=100)
+sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=True, outDir = name )
+sampler.sample(np.array(init),5000000,thin=50)
 
 
 
