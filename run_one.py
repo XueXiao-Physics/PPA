@@ -41,8 +41,8 @@ args = parser.parse_args()
 #=====================================================#
 #    Load the pulsars                                 #
 #=====================================================#
-tag = args.mock_method
-tag += f"_d{args.dlnprior:.0f}_o{args.order}_r{args.nfreqs}_i" + args.iono  + "_" + args.subset + "_"
+
+tag_ana = f"_ana_d{args.dlnprior:.0f}_o{args.order}_r{args.nfreqs}_i" + args.iono  + "_" + args.subset + "_" + args.model + "_"
 
 PSR_DICT = ppa.Load_All_Pulsar_Info()
 
@@ -54,9 +54,15 @@ pulsars = [ ppa.Pulsar( PSR_DICT[psrn] , order = args.order \
 PSR_NAME_LIST = [psr.PSR_NAME for psr in pulsars]
 if args.pulsar >= 0 : 
     pulsars = [pulsars[args.pulsar]]
-    tag += pulsars[0].PSR_NAME + '_'
+    tag_ana += pulsars[0].PSR_NAME + '_'
 elif args.pulsar == -1:
     pulsars = pulsars
+
+array = ppa.Array(pulsars)
+NSS = np.sum( array.NSUBSETS_by_SS )
+NPSR = array.NPSR
+
+tag_ana += f"Np{NPSR}" 
 
 
 
@@ -66,32 +72,26 @@ elif args.pulsar == -1:
 #=====================================================#
 
 
-array = ppa.Array(pulsars)
-
-NSS = np.sum( array.NSUBSETS_by_SS )
-NPSR = array.NPSR
-
-tag += args.model + "_"
-tag += f"Np{NPSR}"
-
-
 if args.mock_method == "white":
     array.DPA = array.Gen_Mock_Data(None,None,'none',seed=args.mock_seed)
-    tag += "mock_%.if"%(args.mock_seed)
+    tag = "mock_"+args.mock_method+"_%i"%(args.mock_seed) + tag_ana
 
 elif args.mock_method == "auto":
     array.DPA = array.Gen_Mock_Data(args.mock_lma , args.mock_lSa,"auto",seed=args.mock_seed)
-    tag += "mock_%.1f_%.1f_%.if"%(args.mock_lma,args.mock_lSa,args.mock_seed)
+    tag = "mock_"+args.mock_method+"_%.1f_%.1f_%i"%(args.mock_lma,args.mock_lSa,args.mock_seed) + tag_ana
 
 elif args.mock_method == "full":
     array.DPA = array.Gen_Mock_Data(args.mock_lma , args.mock_lSa,"full",seed=args.mock_seed)
-    tag += "mock_%.1f_%.1f_%.if"%(args.mock_lma,args.mock_lSa,args.mock_seed)
+    tag = "mock_"+args.mock_method+"_%.1f_%.1f_%i"%(args.mock_lma,args.mock_lSa,args.mock_seed) + tag_ana
 
 elif args.mock_method == "data":
-    pass
+    tag = "data" + tag_ana
 
 else: 
     raise
+
+
+print(tag)
 
 
 ones = np.ones(array.NPSR)
