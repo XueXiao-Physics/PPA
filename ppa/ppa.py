@@ -121,7 +121,8 @@ class Pulsar():
             
 
 
-        self.TOA = []
+        self.TOAs = []
+        self.TOBSs = []
         self.DPA = []
         self.DPA_ERR = []
         self.NOBS = []
@@ -131,6 +132,7 @@ class Pulsar():
         self.RM = []
         self.RM_ERR = []
         self.WAVE_LENGTH = []
+
 
         for SS in self.SUBSETS:
             TOA1 , DPA , DPA_ERR = np.loadtxt( PSR_DICT["DATA"][SS] )
@@ -143,17 +145,18 @@ class Pulsar():
             RM = RM[idx2]
             RM_ERR = RM_ERR[idx2]
 
-            TOA = TOA - TREF
-            NOBS = len(TOA)
-            DES_MTX = self.get_design_matrix( TOA , order =  order )
+            TOAs = ( TOA - TREF ) * sc.day
+            TOBSs = TOAs.max() - TOAs.min()
+            NOBS = len(TOAs)
+            DES_MTX = self.get_design_matrix( TOAs , order = order )
             
             FREQS , F_RED = self.get_F_red( TOA , nfreqs = nfreqs )
             self.F_RED.append(F_RED)
             self.FREQS.append(FREQS)
 
             
-            
-            self.TOA.append(TOA)
+            self.TOBSs.append(TOBSs)
+            self.TOAs.append(TOAs)
             self.NOBS.append(NOBS)
             self.DES_MTX.append(DES_MTX)
             self.RM.append(RM)
@@ -181,17 +184,17 @@ class Pulsar():
 
 
     
-    def get_design_matrix( self , TOA , order = 2 ):
+    def get_design_matrix( self , TOAs , order = 2 ):
 
         if order in [ 0 , 1 , 2 ]:
 
-            TOA_mid = ( TOA.max() + TOA.min() ) / 2
-            TOA_interval = ( TOA.max() - TOA.min() )
-            TOA_normalized = ( TOA - TOA_mid ) / TOA_interval
+            TOAs_mid = ( TOAs.max() + TOAs.min() ) / 2
+            TOBSs = TOAs.max() - TOAs.min() 
+            TOAs_normalized = ( TOAs - TOAs_mid ) / TOBSs
 
-            vec1 = TOA_normalized / TOA_normalized
-            vec2 = TOA_normalized
-            vec3 = TOA_normalized ** 2
+            vec1 = TOAs_normalized / TOAs_normalized
+            vec2 = TOAs_normalized
+            vec3 = TOAs_normalized ** 2
 
             DES_MTX = np.array( [vec1 , vec2 , vec3] )     
             
@@ -203,21 +206,20 @@ class Pulsar():
   
 
 
-    def get_F_red(self , TOA , nfreqs = 0):
+    def get_F_red(self , TOAs , nfreqs = 0):
         
         if nfreqs > 0 and type(nfreqs)==int :
-            F_red = np.zeros( ( nfreqs*2 , len(TOA)) )
-            t = TOA * sc.day
-            T = ( t.max() - t.min() )
-            freqs = 1 / T * np.arange(1,1+nfreqs)
+            F_red = np.zeros( ( nfreqs*2 , len(TOAs)) ) 
+            TOBSs = TOAs.max() - TOAs.min() 
+            freqs = 1 / TOBSs * np.arange(1,1+nfreqs)
             if nfreqs > 0:
                 for i in range( nfreqs ):
-                    F_red[2*i,:]   = np.cos( 2 * np.pi * freqs[i] * t )
-                    F_red[2*i+1,:] = np.sin( 2 * np.pi * freqs[i] * t )
+                    F_red[2*i,:]   = np.cos( 2 * np.pi * freqs[i] * TOAs )
+                    F_red[2*i+1,:] = np.sin( 2 * np.pi * freqs[i] * TOAs )
             return freqs , F_red
         
         else:
-            return np.array([]),np.empty((0,len(TOA)))
+            return np.array([]),np.empty((0,len(TOAs)))
 
 
 
@@ -246,7 +248,8 @@ class Array():
         self.sDTE_LNPRIOR = [psr.DTE_LNPRIOR for psr in Pulsars]
         self.PSR_LOC = np.array( [psr.PSR_LOC for psr in Pulsars] )
 
-        self.TOA = [psr.TOA for psr in Pulsars]
+        self.TOAs = [psr.TOAs for psr in Pulsars]
+        self.TOBSs = [psr.TOBSs for psr in Pulsars]
         self.DPA = [psr.DPA for psr in Pulsars]
         self.DPA_ERR = [psr.DPA_ERR for psr in Pulsars]
         self.DES_MTX = [ psr.DES_MTX for psr in Pulsars ] 
@@ -433,10 +436,10 @@ class Array():
         F_COMBINED = deepcopy(self.F_RED_COMBINED)
         for p in range(self.NPSR):
             pointer = 0
-            F_NEW = np.zeros( (2,len(F_COMBINED[p][0])) )
+            F_NEW = np.zeros( (2,F_COMBINED[p].shape[1]))
             for ss in range( self.NSUBSETS_by_SS[p] ):
                 NOBS = self.NOBS[p][ss]
-                t = self.TOA[p][ss] * sc.day
+                t = self.TOAs[p][ss] 
                 F_NEW[ 0 , pointer:pointer+NOBS] = np.cos(omega * t.astype(np.float64))
                 F_NEW[ 1 , pointer:pointer+NOBS] = np.sin(omega * t.astype(np.float64))
 
@@ -512,9 +515,10 @@ class Array():
 
             # Red, assume nothing
             FREQS_by_SS = [ x for xs in self.FREQS for x in xs]
+            TOBSs_by_SS = [x for xs in self.TOBSs for x in xs]
             S0red = np.ones(self.NSUBSETS_TOTAL)
             Gamma = np.zeros(self.NSUBSETS_TOTAL)
-            Sred2 = [  np.repeat( (FREQS_by_SS[i]/FYR)**Gamma[i] * S0red[i]**2 *  FREQS_by_SS[i][0]/FYR ,2) for i in range(self.NSUBSETS_TOTAL)]
+            Sred2 = [  np.repeat( (FREQS_by_SS[i]/FYR)**Gamma[i] * S0red[i]**2 *  1/FYR/TOBSs_by_SS[i] ,2) for i in range(self.NSUBSETS_TOTAL)]
             
 
             # For axion
@@ -534,42 +538,7 @@ class Array():
                     DPA[p][ss] += mock[pointer:pointer+NOBS]
                     pointer += NOBS
 
-            
-
-
-
-
-        """
-        # Get core matrix Phi
-        _Phi = self.Get_Phi( 1e-3 , 10**mock_lma ,np.ones(self.NSUBSETS_TOTAL) )
-        _Phi_Full = np.block( _Phi.tolist() )  
-        _Phi_Auto = np.diag( np.diag( _Phi_Full) )
-        F_by_SS = self.Get_F_adm( 10**mock_lma )
-
-        # Gen mock data
-        if method == "auto":
-            Phi = _Phi_Auto
-        elif method == "full":
-            Phi = _Phi_Full
-        else:
-            raise
-
-        _mock = np.random.multivariate_normal(np.zeros(len(Phi)),Phi) * 10**mock_lSa
-        mock = _mock@F
-
-        # Divide Data
-        pointer = np.concatenate([[0],np.cumsum(np.concatenate(self.NOBS))])    
-        iSS = 0
-        DPA = np.zeros(self.NPSR,dtype="object")
-        for P in range( self.NPSR ):
-            DPA_P = []
-            for S in range(self.NSUBSETS_by_SS[P]):
-                DPA_S = mock[ pointer[iSS] : pointer[iSS+1] ] + DPA_white[P][S]
-                DPA_P.append(DPA_S)
-                iSS += 1
-            DPA[P] = np.array(DPA_P ) 
-
-        """
+        
         return DPA
         
 
@@ -588,6 +557,7 @@ class Array():
         ORDERS_by_SS = [ len(x) for x in DES_MTX_by_SS ]
 
         FREQS_by_SS = [ x for xs in self.FREQS for x in xs]
+        TOBSs_by_SS = [x for xs in self.TOBSs for x in xs]
 
         NOBS_TOTAL = self.NOBS_TOTAL
         ALL_ORDERS = np.sum(ORDERS_by_SS)
@@ -612,7 +582,8 @@ class Array():
             #=============================================#
             #     Red Noise                               #
             #=============================================#
-            Sred2 = [  np.repeat( (FREQS_by_SS[i]/FYR)**Gamma[i] * S0red[i]**2 *  FREQS_by_SS[i][0]/FYR ,2) for i in range(self.NSUBSETS_TOTAL)]
+
+            Sred2 = [  np.repeat( (FREQS_by_SS[i]/FYR)**Gamma[i] * S0red[i]**2 *  1/FYR/TOBSs_by_SS[i] ,2) for i in range(self.NSUBSETS_TOTAL)]
 
 
             Phi_inv , Phi_logdet = self.Get_Phi_inv( 1e-3 , ma , sDTE , Sa**2 , Sred2 , adm_signal )
