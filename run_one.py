@@ -68,15 +68,15 @@ elif args.pulsar == -1:
 array = ppa.Array(pulsars)
 if args.mock_method == "white":
     array.DPA = array.Gen_Mock_Data(None,None,'none',seed=args.mock_seed)
-    tag += "_%.1f"%(args.mock_seed)
+    tag += "mock_%.if"%(args.mock_seed)
 
 elif args.mock_method == "auto":
     array.DPA = array.Gen_Mock_Data(args.mock_lma , args.mock_lSa,"auto",seed=args.mock_seed)
-    tag += "_%.1f_%.1f_%.1f"%(args.mock_lma,args.mock_lSa,args.mock_seed)
+    tag += "mock_%.1f_%.1f_%.if"%(args.mock_lma,args.mock_lSa,args.mock_seed)
 
 elif args.mock_method == "full":
     array.DPA = array.Gen_Mock_Data(args.mock_lma , args.mock_lSa,"full",seed=args.mock_seed)
-    tag += "_%.1f_%.1f_%.1f"%(args.mock_lma,args.mock_lSa,args.mock_seed)
+    tag += "mock_%.1f_%.1f_%.if"%(args.mock_lma,args.mock_lSa,args.mock_seed)
 
 elif args.mock_method == "data":
     pass
