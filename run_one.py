@@ -60,12 +60,21 @@ elif args.pulsar == -1:
 
 
 
+
 #=====================================================#
 #    Construct the array                              #
 #=====================================================#
 
 
 array = ppa.Array(pulsars)
+
+NSS = np.sum( array.NSUBSETS_by_SS )
+NPSR = array.NPSR
+
+tag += args.model + "_"
+tag += f"Np{NPSR}"
+
+
 if args.mock_method == "white":
     array.DPA = array.Gen_Mock_Data(None,None,'none',seed=args.mock_seed)
     tag += "mock_%.if"%(args.mock_seed)
@@ -113,11 +122,6 @@ elif args.model == "nf":
     
 else:
     raise
-NSS = np.sum( array.NSUBSETS_by_SS )
-NPSR = array.NPSR
-
-tag += args.model + "_"
-tag += f"Np{NPSR}"
 #print(tag)
 
 
