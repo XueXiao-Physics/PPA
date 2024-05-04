@@ -332,7 +332,7 @@ class Array():
         return PSR_POS,DL_MTX
 
 
-    def Get_Phi_inv( self , v , ma, sDTE , Sa2 , Sred2 , adm_signal ):
+    def Get_Phi_inv( self , v , ma, sDTE , Sa2 , Sred2 , adm_signal , return_ADM=False ):
         # this function is to combine every phi into a combined matrix.
         Sred2 = self.Fold_Array(Sred2)
         Phi_inv_vec = deepcopy( self.PHI_BASE_RED_VEC )
@@ -345,7 +345,7 @@ class Array():
         
         if adm_signal in [ "none"]:
             Phi_inv = np.diag( np.concatenate([x for xs in Phi_inv_vec for x in xs]) )
-            return Phi_inv , Phi_logdet
+            
         
         elif adm_signal in ["auto","full"] :
             DTE = self.DTE0 * sDTE
@@ -373,7 +373,6 @@ class Array():
                     Phi_logdet += np.log(  Phi_ccss )* 2
 
                 Phi_inv = np.diag( np.concatenate([x for xs in Phi_inv_vec for x in xs]) )
-                return Phi_inv , Phi_logdet
             
             elif adm_signal == "full":
 
@@ -420,12 +419,15 @@ class Array():
                         pointer2_y += 2
                     pointer_x += ndim_by_psr[p] 
                     pointer2_x += 2
-                    
-                return Phi_inv , Phi_logdet
+
+                if return_ADM:
+                    return ADM_Phi_compact
+        
+        return Phi_inv , Phi_logdet
 
 
 
-    def Get_ADM_F(self,ma ):
+    def Get_ADM_F(self,ma , return_ADM = False):
 
         omega = ma*sc.eV/sc.hbar
         F_COMBINED = deepcopy(self.F_RED_COMBINED)
@@ -440,7 +442,11 @@ class Array():
 
 
                 pointer += NOBS
-            F_COMBINED[p] = np.vstack([ F_NEW , F_COMBINED[p] ])
+
+            if return_ADM == True:
+                F_COMBINED[p] = F_NEW
+            else:
+                F_COMBINED[p] = np.vstack([ F_NEW , F_COMBINED[p] ])
             
         #return F_matrix  , F_blocks_bysubsets
         return F_COMBINED
@@ -492,14 +498,48 @@ class Array():
         return DPA
 
 
-    def Gen_Red_Mock_Data( self , method , mock_lma , mock_lSa  , seed=10 ):
+    def Gen_Mock_Data( self , mock_lma , mock_lSa , adm_signal  , seed=10 ):
 
 
         np.random.seed(seed)
 
         # Generate white noise first
-        DPA_white = self.Gen_White_Mock_Data(seed=seed)
+        DPA = self.Gen_White_Mock_Data(seed=seed)
+        if adm_signal in ['none']:
+            return DPA
+        
+        elif adm_signal in ['full','auto']:
 
+            # Red, assume nothing
+            FREQS_by_SS = [ x for xs in self.FREQS for x in xs]
+            S0red = np.ones(self.NSUBSETS_TOTAL)
+            Gamma = np.zeros(self.NSUBSETS_TOTAL)
+            Sred2 = [  np.repeat( (FREQS_by_SS[i]/FYR)**Gamma[i] * S0red[i]**2 *  FREQS_by_SS[i][0]/FYR ,2) for i in range(self.NSUBSETS_TOTAL)]
+            
+
+            # For axion
+            ma = 10**mock_lma
+            Sa = 10**mock_lSa
+            Phi  = self.Get_Phi_inv( 1e-3 , ma , np.ones(self.NPSR) , Sa**2 , Sred2 , "full" , return_ADM=True )
+            F_by_psr = self.Get_ADM_F( ma , return_ADM=True)
+            if adm_signal == 'auto':
+                Phi = np.diag(np.diag(Phi))
+
+            Fmock = np.random.multivariate_normal(np.zeros(len(Phi)),Phi) 
+            for p in range(self.NPSR):
+                mock = Fmock[2*p : 2*p+2]@F_by_psr[p]
+                pointer = 0
+                for ss in range(self.NSUBSETS_by_SS[p]):
+                    NOBS = self.NOBS[p][ss]
+                    DPA[p][ss] += mock[pointer:pointer+NOBS]
+                    pointer += NOBS
+
+            
+
+
+
+
+        """
         # Get core matrix Phi
         _Phi = self.Get_Phi( 1e-3 , 10**mock_lma ,np.ones(self.NSUBSETS_TOTAL) )
         _Phi_Full = np.block( _Phi.tolist() )  
@@ -529,7 +569,7 @@ class Array():
                 iSS += 1
             DPA[P] = np.array(DPA_P ) 
 
-        
+        """
         return DPA
         
 
@@ -582,9 +622,9 @@ class Array():
             #=============================================#
             # It is very important that Sa and S0 are not too different from each other.
             if adm_signal in ['auto','full']:
-                F_by_SS = self.Get_ADM_F( ma )
+                F_by_psr = self.Get_ADM_F( ma )
             elif adm_signal in ['none']:
-                F_by_SS = self.F_RED_COMBINED
+                F_by_psr = self.F_RED_COMBINED
             else:
                 raise
 
@@ -606,7 +646,7 @@ class Array():
                 M = sl.block_diag( *self.DES_MTX[p] ).T
 
                 # whiten everything
-                F_whiten   = F_by_SS[p]/ NEW_DPA_ERR[None,:]
+                F_whiten   = F_by_psr[p]/ NEW_DPA_ERR[None,:]
                 DPA_whiten = DPA       / NEW_DPA_ERR
                 M_whiten   = M         / NEW_DPA_ERR[:,None] 
 

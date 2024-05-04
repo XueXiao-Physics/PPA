@@ -18,15 +18,18 @@ parser = argparse.ArgumentParser(
     prog = "PPA",
     description="Run Bayesian Analysis of PPA"
 )
-
-parser.add_argument("-lma_min"  , action="store" , type=float , default="-23.6"  )
-parser.add_argument("-lma_max"  , action="store" , type=float , default="-18.5" )
-parser.add_argument("-order"    , action="store", type=int , default="2" )
+# For search
+parser.add_argument("-lma_min"  , action="store" ,   type = float , default="-23.6"  )
+parser.add_argument("-lma_max"  , action="store" ,   type = float , default="-18.5" )
+parser.add_argument("-order"    , action="store",    type = int , default="2" )
 parser.add_argument("-dlnprior" , action = "store" , type = float , default="0" )
 
-parser.add_argument("-mock_method" , action = "store", choices=["none" , "white" , "auto" ,"data"] , default="data")
+# for mock data
+parser.add_argument("-mock_method" , action = "store", choices=["none" , "white" , "auto" ,"full","data"] , default="data")
 parser.add_argument("-mock_lma"    , action = "store" , type = float , default = "-22.0"  )
 parser.add_argument("-mock_lSa"    , action = "store" , type = float , default = "-2.5" )
+parser.add_argument("-mock_seed"   , action = "store" , type = int , default = "10" )
+
 parser.add_argument("-pulsar"      , action = "store" , type = int , default="-1" )
 parser.add_argument("-iono"        , action = "store", choices=["none","subt"] , default='subt')
 parser.add_argument("-subset"      , action = "store", choices=["10cm","20cm","all"] , default = "all" )
@@ -64,20 +67,20 @@ elif args.pulsar == -1:
 
 array = ppa.Array(pulsars)
 if args.mock_method == "white":
-    array.DPA = array.Gen_White_Mock_Data()
-    print("Data replaced by mock data using the redefined measurement error.")
+    array.DPA = array.Gen_Mock_Data(None,None,'none',seed=args.mock_seed)
+    tag += "_%.1f"%(args.mock_seed)
+
 elif args.mock_method == "auto":
-    array.DPA = array.Gen_Red_Mock_Data("auto",args.mock_lma , args.mock_lSa)
-    print("Data replaced by mock data using the redefined measurement error.")
-    print("Additional Red noise added: lma=%.1f, lSa=%.1f"%(args.mock_lma,args.mock_lSa), ". Method: " + "auto")
-    tag += "_%.1f_%.1f"%(args.mock_lma,args.mock_lSa)
+    array.DPA = array.Gen_Mock_Data(args.mock_lma , args.mock_lSa,"auto",seed=args.mock_seed)
+    tag += "_%.1f_%.1f_%.1f"%(args.mock_lma,args.mock_lSa,args.mock_seed)
+
 elif args.mock_method == "full":
-    array.DPA = array.Gen_Red_Mock_Data("full",args.mock_lma , args.mock_lSa)
-    print("Data replaced by mock data using the redefined measurement error.")
-    print("Additional Red noise added: lma=%.1f, lSa=%.1f"%(args.mock_lma,args.mock_lSa), ". Method: " + "auto")
-    tag += "_%.1f_%.1f"%(args.mock_lma,args.mock_lSa)
+    array.DPA = array.Gen_Mock_Data(args.mock_lma , args.mock_lSa,"full",seed=args.mock_seed)
+    tag += "_%.1f_%.1f_%.1f"%(args.mock_lma,args.mock_lSa,args.mock_seed)
+
 elif args.mock_method == "data":
     pass
+
 else: 
     raise
 
@@ -87,21 +90,27 @@ zeros = np.zeros(array.NPSR)
 if args.model == "n":
     lnlike_sig0_raw = array.Generate_Lnlike_Function( "none" )
     lnlike_sig1_raw = array.Generate_Lnlike_Function( "none" )
+
 elif args.model == "a":
     lnlike_sig0_raw = array.Generate_Lnlike_Function( "auto" )
     lnlike_sig1_raw = array.Generate_Lnlike_Function( "auto" )
+
 elif args.model == "f":
     lnlike_sig0_raw = array.Generate_Lnlike_Function( "full" )
     lnlike_sig1_raw = array.Generate_Lnlike_Function( "full" )
+
 elif args.model == "af":
     lnlike_sig0_raw = array.Generate_Lnlike_Function( "auto" )
     lnlike_sig1_raw = array.Generate_Lnlike_Function( "full" )
+
 elif args.model == "na":
     lnlike_sig0_raw = array.Generate_Lnlike_Function( "none" )
     lnlike_sig1_raw = array.Generate_Lnlike_Function( "auto" )
+
 elif args.model == "nf":
     lnlike_sig0_raw = array.Generate_Lnlike_Function( "none" )
     lnlike_sig1_raw = array.Generate_Lnlike_Function( "full" )
+    
 else:
     raise
 NSS = np.sum( array.NSUBSETS_by_SS )
