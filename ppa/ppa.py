@@ -567,11 +567,11 @@ class Array():
             #=============================================#
             #     Mapping Paramaters                      #
             #=============================================#
-            EFAC = np.power(  10 , l10_EFAC  )
-            EQUAD = np.power(  10 , l10_EQUAD )
-            ma = np.power(  10 , l10_ma)
-            Sa = np.power(  10 , l10_Sa , )
-            S0red = np.power( 10 ,  l10_S0red  )
+            EFAC  = 10**np.array(l10_EFAC).astype(float)
+            EQUAD = 10**np.array(l10_EQUAD).astype(float)
+            ma    = 10**np.array(l10_ma).astype(float)
+            Sa    = 10**np.array(l10_Sa).astype(float)
+            S0red = 10**np.array(l10_S0red).astype(float)
 
             #=============================================#
             #     White Noise                             #
@@ -646,33 +646,25 @@ class Array():
             #=============================================#
             
 
-
-
-
             lnl_white = -0.5 * xNx  - 0.5*N_logdet  - 0.5 * np.log( 2*np.pi ) * NOBS_TOTAL
-
-            MCM = MNM
-            MCx = Mx
             PhiFNF = Phi_inv + FNF
+            MCM = deepcopy(MNM)
+            MCx = deepcopy(Mx)
 
-            if PhiFNF.size != 0:
+            if Phi_inv.size != 0 :
+                
                 PhiFNF_inv = sl.inv(PhiFNF) ; PhiFNF_logdet = nl.slogdet(PhiFNF)[1]
                 lnl_corr = -0.5 * ( -Fx.T @ PhiFNF_inv @ Fx )  - 0.5 * ( Phi_logdet + PhiFNF_logdet )
-                MCM = MCM - FM.T @ PhiFNF_inv @ FM 
-                Mx  = Mx -  FM.T @ PhiFNF_inv @ Fx
-                #MCM_inv , MCM_logdet = svd_inv(MCM)
-                
 
+                MCM = MCM - FM.T @ PhiFNF_inv @ FM 
+                MCx = MCx -  FM.T @ PhiFNF_inv @ Fx
             else:
                 lnl_corr = 0
-
-
+                
+                
             MCM_inv = sl.inv(MCM) ; MCM_logdet = nl.slogdet(MCM)[1]
             lnl_M = 0.5 * MCx.T @ MCM_inv @ MCx - 0.5 * MCM_logdet  + 0.5 * np.log( 2*np.pi ) * ALL_ORDERS
-
-
             lnl = lnl_white  + lnl_corr + lnl_M
-
             #print(lnl)
             return  lnl
                 
