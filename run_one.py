@@ -135,13 +135,13 @@ def Mapper(params):
 
     l10_EFAC = params[:NSS]
     l10_EQUAD = params[NSS:2*NSS]
-    l10_S0 = params[2*NSS:3*NSS]
+    l10_S0red = params[2*NSS:3*NSS]
     Gamma = params[3*NSS:4*NSS]
     sDTE = params[4*NSS : 4*NSS+NPSR]
     l10_ma = params[4*NSS+NPSR ]
     l10_Sa = params[4*NSS+NPSR + 1]
 
-    return l10_EFAC , l10_EQUAD , l10_S0 , Gamma , sDTE  , l10_ma , l10_Sa
+    return l10_EFAC , l10_EQUAD , l10_S0red , Gamma , sDTE  , l10_ma , l10_Sa
 
 
 #=====================================================#
@@ -165,18 +165,18 @@ def lnlike_sig1( params ):
 
 l10_EFAC_lp , l10_EFAC_sp = ppa.gen_uniform_lnprior(-2,2)
 l10_EQUAD_lp , l10_EQUAD_sp = ppa.gen_uniform_lnprior(-8,2)
-l10_S0_lp , l10_S0_sp = ppa.gen_uniform_lnprior(-8,2)
+l10_S0red_lp , l10_S0red_sp = ppa.gen_uniform_lnprior(-8,2)
 Gamma_lp    , Gamma_sp = ppa.gen_uniform_lnprior(-2,0)
 sDTE_lp = array.sDTE_LNPRIOR
 l10_ma_lp , l10_ma_sp = ppa.gen_uniform_lnprior(args.lma_min,args.lma_max)
 l10_Sa_lp , l10_Sa_sp = ppa.gen_uniform_lnprior(-8,2)
 
 def lnprior_nonmodel( params ):
-    l10_EFAC , l10_EQUAD , l10_S0 , Gamma,  sDTE , l10_ma , l10_Sa =  Mapper( params )
+    l10_EFAC , l10_EQUAD , l10_S0red , Gamma,  sDTE , l10_ma , l10_Sa =  Mapper( params )
 
     LP_1 = np.sum( [l10_EFAC_lp(l10_EFAC[i]) for i in range(NSS)] )
     LP_2 = np.sum( [l10_EQUAD_lp(l10_EQUAD[i]) for i in range(NSS)] )
-    LP_3 = np.sum( [l10_S0_lp(l10_S0[i]) for i in range(NSS)] )
+    LP_3 = np.sum( [l10_S0red_lp(l10_S0red[i]) for i in range(NSS)] )
     LP_4 = np.sum( [Gamma_lp(Gamma[i]) for i in range(NSS)] )
 
     LP_5 = np.sum(  [sDTE_lp[i](sDTE[i]) for i in range(NPSR)]  )
@@ -236,7 +236,7 @@ def get_init():
     sDTE = np.random.rand(len(ones))*0.1 + 1 - 0.05
     init_val = [nmodel_sp()] +[l10_EFAC_sp() for i in range(NSS)]\
                              + [l10_EQUAD_sp() for i in range(NSS)]\
-                             + [l10_S0_sp() for i in range(NSS)]\
+                             + [l10_S0red_sp() for i in range(NSS)]\
                              + [Gamma_sp() for i in range(NSS)]\
                              + sDTE.tolist()\
                              + [l10_ma_sp()]\

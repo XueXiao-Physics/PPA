@@ -567,11 +567,11 @@ class Array():
             #=============================================#
             #     Mapping Paramaters                      #
             #=============================================#
-            EFAC = 10 ** l10_EFAC
-            EQUAD = 10 ** l10_EQUAD
-            ma = 10 ** l10_ma
-            Sa = 10 ** l10_Sa
-            S0red = 10 ** l10_S0red
+            EFAC = np.power( l10_EFAC , 10 )
+            EQUAD = np.power( l10_EQUAD , 10 )
+            ma = np.power( l10_ma , 10 )
+            Sa = np.power( l10_Sa , 10 )
+            S0red = np.power( l10_S0red , 10 )
 
             #=============================================#
             #     White Noise                             #
