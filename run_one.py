@@ -23,12 +23,15 @@ parser.add_argument("-lma_min"  , action="store" ,   type = float , default="-23
 parser.add_argument("-lma_max"  , action="store" ,   type = float , default="-18.5" )
 parser.add_argument("-order"    , action="store",    type = int , default="2" )
 parser.add_argument("-dlnprior" , action = "store" , type = float , default="0" )
+parser.add_argument("-nsamp"    , action = "store" , type = int , default = 5000000)
 
 # for mock data
 parser.add_argument("-mock_method" , action = "store", choices=["none" , "white" , "auto" ,"full","data"] , default="data")
 parser.add_argument("-mock_lma"    , action = "store" , type = float , default = "-22.0"  )
 parser.add_argument("-mock_lSa"    , action = "store" , type = float , default = "-2.5" )
 parser.add_argument("-mock_seed"   , action = "store" , type = int , default = "10" )
+
+
 
 parser.add_argument("-pulsar"      , action = "store" , type = int , default="-1" )
 parser.add_argument("-iono"        , action = "store", choices=["none","subt"] , default='subt')
@@ -273,8 +276,8 @@ for ipsr in range(NPSR):
     groups.append(g)
 
 cov = np.diag(np.ones(len(init)))
-sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=False, outDir = name )
-sampler.sample(np.array(init),5000000,thin=50)
+sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=True, outDir = name,verbose=True )
+sampler.sample(np.array(init),args.nsamp,thin=200)
 
 
 

@@ -2,8 +2,6 @@ import numpy as np
 import sys
 import os
 import time
-#lma_idx = float(sys.argv[1])
-#dlnprior = float(sys.argv[2])
 
 
 mock_method = "data"
@@ -12,10 +10,10 @@ dlnprior = "\" 0\""
 order = "2"
 iono = "none"
 subset = "10cm"
-model = "nf"
+model = "f"
 nfreqs = "3"
-mpi = 6
-nsamp = 5000000
+mpi = 0
+nsamp = 500000
 
 def run( Range=range(0,51),ipsr=-1):
     for lma_idx in Range:
@@ -37,8 +35,9 @@ def run( Range=range(0,51),ipsr=-1):
             argument = f"mpiexec -np {mpi} "+ argument
         os.system(argument + " &")
         
-run([50],-1)
-#run()
-#for ipsr in range(8,22):
-#    run(ipsr=ipsr)
-#    time.sleep(1400)
+for ipsr in range(0,30):
+    try:
+        run(ipsr=ipsr)
+        time.sleep(350)
+    except:
+        pass

@@ -612,8 +612,8 @@ class Array():
             iss=0
             for p in range(self.NPSR):
                 nss = self.NSUBSETS_by_SS[p]
-                NEW_DPA_ERR = np.sqrt(np.concatenate( N_by_SS[iss:iss+nss] ))
-                DPA = np.concatenate( DPA_by_SS[iss:iss+nss] )
+                NEW_DPA_ERR = np.sqrt( np.concatenate( N_by_SS[iss:iss+nss] ).astype(np.float64) )
+                DPA = np.concatenate( DPA_by_SS[iss:iss+nss] ).astype(np.float64)
                 M = sl.block_diag( *self.DES_MTX[p] ).T
 
                 # whiten everything
