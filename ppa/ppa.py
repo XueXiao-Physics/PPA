@@ -567,11 +567,11 @@ class Array():
             #=============================================#
             #     Mapping Paramaters                      #
             #=============================================#
-            EFAC = np.power( l10_EFAC , 10 )
-            EQUAD = np.power( l10_EQUAD , 10 )
-            ma = np.power( l10_ma , 10 )
-            Sa = np.power( l10_Sa , 10 )
-            S0red = np.power( l10_S0red , 10 )
+            EFAC = np.power(  10 , l10_EFAC  )
+            EQUAD = np.power(  10 , l10_EQUAD )
+            ma = np.power(  10 , l10_ma)
+            Sa = np.power(  10 , l10_Sa , )
+            S0red = np.power( 10 ,  l10_S0red  )
 
             #=============================================#
             #     White Noise                             #
@@ -646,24 +646,33 @@ class Array():
             #=============================================#
             
 
-            PhiFNF = Phi_inv + FNF
-            #PhiFNF_inv,PhiFNF_logdet = svd_inv(PhiFNF)
-            PhiFNF_inv = sl.inv(PhiFNF) ; PhiFNF_logdet = nl.slogdet(PhiFNF)[1]
+
+
 
             lnl_white = -0.5 * xNx  - 0.5*N_logdet  - 0.5 * np.log( 2*np.pi ) * NOBS_TOTAL
-            lnl_corr = -0.5 * ( -Fx.T @ PhiFNF_inv @ Fx )  - 0.5 * ( Phi_logdet + PhiFNF_logdet )
+
+            MCM = MNM
+            MCx = Mx
+            PhiFNF = Phi_inv + FNF
+
+            if PhiFNF.size != 0:
+                PhiFNF_inv = sl.inv(PhiFNF) ; PhiFNF_logdet = nl.slogdet(PhiFNF)[1]
+                lnl_corr = -0.5 * ( -Fx.T @ PhiFNF_inv @ Fx )  - 0.5 * ( Phi_logdet + PhiFNF_logdet )
+                MCM = MCM - FM.T @ PhiFNF_inv @ FM 
+                Mx  = Mx -  FM.T @ PhiFNF_inv @ Fx
+                #MCM_inv , MCM_logdet = svd_inv(MCM)
+                
+
+            else:
+                lnl_corr = 0
 
 
-            # For marginalization
-            
-            MCM = MNM - FM.T @ PhiFNF_inv @ FM 
-            MCx = Mx -  FM.T @ PhiFNF_inv @ Fx
-            #MCM_inv , MCM_logdet = svd_inv(MCM)
             MCM_inv = sl.inv(MCM) ; MCM_logdet = nl.slogdet(MCM)[1]
-
             lnl_M = 0.5 * MCx.T @ MCM_inv @ MCx - 0.5 * MCM_logdet  + 0.5 * np.log( 2*np.pi ) * ALL_ORDERS
 
+
             lnl = lnl_white  + lnl_corr + lnl_M
+
             #print(lnl)
             return  lnl
                 
