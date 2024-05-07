@@ -166,7 +166,7 @@ def lnlike_sig1( params ):
 l10_EFAC_lp , l10_EFAC_sp = ppa.gen_uniform_lnprior(-2,2)
 l10_EQUAD_lp , l10_EQUAD_sp = ppa.gen_uniform_lnprior(-8,2)
 l10_S0red_lp , l10_S0red_sp = ppa.gen_uniform_lnprior(-8,2)
-Gamma_lp    , Gamma_sp = ppa.gen_uniform_lnprior(-2,0)
+Gamma_lp    , Gamma_sp = ppa.gen_uniform_lnprior(-3,3)
 sDTE_lp = array.sDTE_LNPRIOR
 l10_ma_lp , l10_ma_sp = ppa.gen_uniform_lnprior(args.lma_min,args.lma_max)
 l10_Sa_lp , l10_Sa_sp = ppa.gen_uniform_lnprior(-8,2)

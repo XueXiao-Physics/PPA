@@ -257,12 +257,9 @@ class Array():
         self.FREQS = [ psr.FREQS for psr in Pulsars]
         self.NFREQS = [[ len(x) for x in xs] for xs in self.FREQS  ]
 
-
-
         self.NSUBSETS_by_SS = [ len(SUBSETS) for SUBSETS in self.SUBSETS]
         self.NSUBSETS_TOTAL = np.sum(self.NSUBSETS_by_SS)
 
-        self.F_RED_COMBINED = self.Get_Red_F()
         self.PHI_BASE_RED_VEC = self.Get_Phi_base_red()
 
 
@@ -295,25 +292,6 @@ class Array():
             PHI_BASE_RED_VEC.append( PHI_BASE_RED_VEC_psr )
 
         return PHI_BASE_RED_VEC 
-    
-    # it is precalculated
-    def Get_Red_F( self ): 
-        ndim_by_psr = [ 2*np.sum(x)  for x in self.NFREQS ] 
-        F_RED_COMBINED = []
-
-        for p in range(self.NPSR):
-            pointer_x = 0
-            pointer_y = 0
-            F = np.zeros( ( ndim_by_psr[p] , np.sum(self.NOBS[p]) ) )
-            for ss in range(self.NSUBSETS_by_SS[p]):
-                dx = self.NFREQS[p][ss]*2
-                dy = self.NOBS[p][ss]
-                F[pointer_x:pointer_x +  dx,pointer_y:pointer_y + dy] = self.F_RED[p][ss]
-                pointer_x += dx
-                pointer_y += dy
-            F_RED_COMBINED.append(F)
-
-        return  F_RED_COMBINED 
 
 
 
@@ -430,29 +408,29 @@ class Array():
 
 
 
-    def Get_ADM_F(self,ma , return_ADM = False):
+    def Get_F_ADM(self,ma ,adm_signal):
 
-        omega = ma*sc.eV/sc.hbar
-        F_COMBINED = deepcopy(self.F_RED_COMBINED)
+        omega = ma * sc.eV/sc.hbar
+        F_ADM = []
         for p in range(self.NPSR):
-            pointer = 0
-            F_NEW = np.zeros( (2,F_COMBINED[p].shape[1]))
+            F_ADM_psr = []
             for ss in range( self.NSUBSETS_by_SS[p] ):
                 NOBS = self.NOBS[p][ss]
                 t = self.TOAs[p][ss] 
-                F_NEW[ 0 , pointer:pointer+NOBS] = np.cos(omega * t.astype(np.float64))
-                F_NEW[ 1 , pointer:pointer+NOBS] = np.sin(omega * t.astype(np.float64))
+                if adm_signal in ["auto","full"]:
+                    F_ADM_ss = np.zeros((2,NOBS))
+                    F_ADM_ss[ 0 ] = np.cos(omega * t.astype(np.float64))
+                    F_ADM_ss[ 1 ] = np.sin(omega * t.astype(np.float64))
+                    ndim = 2
+                elif adm_signal in ["none"]:
+                    F_ADM_ss = np.zeros((0,NOBS))
+                    ndim = 0
 
-
-                pointer += NOBS
-
-            if return_ADM == True:
-                F_COMBINED[p] = F_NEW
-            else:
-                F_COMBINED[p] = np.vstack([ F_NEW , F_COMBINED[p] ])
+                F_ADM_psr.append(F_ADM_ss)
+            F_ADM.append(F_ADM_psr)
             
         #return F_matrix  , F_blocks_bysubsets
-        return F_COMBINED
+        return F_ADM, ndim
     
     #=====================================================#
     #    Load Bestfit parameters                          #
@@ -556,7 +534,10 @@ class Array():
         DES_MTX_by_SS = [ x for xs in self.DES_MTX for x in xs] 
         ORDERS_by_SS = [ len(x) for x in DES_MTX_by_SS ]
 
-        FREQS_by_SS = [ x for xs in self.FREQS for x in xs]
+        FREQS_by_SS = [x for xs in self.FREQS for x in xs]
+
+
+        NFREQS_by_psr = [np.sum([ len(x) for x in xs ]) for xs in self.FREQS ]
         TOBSs_by_SS = [x for xs in self.TOBSs for x in xs]
 
         NOBS_TOTAL = self.NOBS_TOTAL
@@ -583,21 +564,12 @@ class Array():
             #     Red Noise                               #
             #=============================================#
 
-            Sred2 = [  np.repeat( (FREQS_by_SS[i]/FYR)**Gamma[i] * S0red[i]**2 *  1/FYR/TOBSs_by_SS[i] ,2) for i in range(self.NSUBSETS_TOTAL)]
-
-
+            Sred2 = [  np.repeat( (FREQS_by_SS[i]/FYR)**Gamma[i] * S0red[i]**2 *  1/FYR/TOBSs_by_SS[i] ,2) for i in range(self.NSUBSETS_TOTAL)]                
             Phi_inv , Phi_logdet = self.Get_Phi_inv( 1e-3 , ma , sDTE , Sa**2 , Sred2 , adm_signal )
-
-            #=============================================#
-            #     Phi, Axion and Red                      #
-            #=============================================#
+ 
             # It is very important that Sa and S0 are not too different from each other.
-            if adm_signal in ['auto','full']:
-                F_by_psr = self.Get_ADM_F( ma )
-            elif adm_signal in ['none']:
-                F_by_psr = self.F_RED_COMBINED
-            else:
-                raise
+            F_red_byss = self.F_RED
+            F_adm_byss,adm_dim = self.Get_F_ADM(ma,adm_signal)
 
             #=============================================#
             #     For marginalization                     #
@@ -608,38 +580,65 @@ class Array():
             FM = []
             FNF = []
             MNM = []
-            Mx = []
-            iss=0
+            MNx = []
+            iss = 0
             for p in range(self.NPSR):
-                nss = self.NSUBSETS_by_SS[p]
-                NEW_DPA_ERR = np.sqrt( np.concatenate( N_by_SS[iss:iss+nss] ).astype(np.float64) )
-                DPA = np.concatenate( DPA_by_SS[iss:iss+nss] ).astype(np.float64)
-                M = sl.block_diag( *self.DES_MTX[p] ).T
+                nfreqs = NFREQS_by_psr[p]
+                FNF_psr = np.zeros( (adm_dim + 2*nfreqs , adm_dim + 2*nfreqs ) )
 
-                # whiten everything
-                F_whiten   = F_by_psr[p]/ NEW_DPA_ERR[None,:]
-                DPA_whiten = DPA       / NEW_DPA_ERR
-                M_whiten   = M         / NEW_DPA_ERR[:,None] 
+                FM_adm = []
+                FM_red = []
 
-                # get basic values
-                xNx += DPA_whiten@DPA_whiten
-                Fx.append( F_whiten @ DPA_whiten )
-                FM.append( F_whiten @ M_whiten )
-                FNF.append( F_whiten @ F_whiten.T )
+                Fx_adm = 0
+                Fx_red = []
+                # all these mess are because of block matrices
+                for ss in range(self.NSUBSETS_by_SS[p]):
 
-                # for M
-                MNM.append( M_whiten.T @ M_whiten )
-                Mx.append(  M_whiten.T @ DPA_whiten )
+                    NEW_DPA_ERR = np.sqrt(N_by_SS[iss].astype(np.float64))
+                    DPA = DPA_by_SS[iss].astype(np.float64)
+                    M = self.DES_MTX[p][ss].astype(np.float64).T
+                    
 
-                # end
-                iss+=nss
-            
+                    F_red_whiten = F_red_byss[p][ss]/ NEW_DPA_ERR[None,:]
+                    F_adm_whiten = F_adm_byss[p][ss]/ NEW_DPA_ERR[None,:]
+
+                    DPA_whiten = DPA       / NEW_DPA_ERR
+                    M_whiten   = M         / NEW_DPA_ERR[:,None]
+
+                    pointer = adm_dim + ss * 2 * nfreqs
+                    FNF_psr[:adm_dim,:adm_dim] += F_adm_whiten @ F_adm_whiten.T
+
+                    FNF_psr[ pointer : pointer+nfreqs*2 , pointer : pointer+nfreqs*2 ] = F_red_whiten @ F_red_whiten.T
+                    F_ra = F_red_whiten @  F_adm_whiten.T
+                    FNF_psr[ pointer : pointer+nfreqs*2 , :adm_dim ] = F_ra
+                    FNF_psr[:adm_dim , pointer : pointer+nfreqs*2 ] = F_ra.T
+
+                    FM_adm.append( F_adm_whiten @ M_whiten )
+                    FM_red.append( F_red_whiten @ M_whiten )
+                    
+                    
+                    Fx_adm += F_adm_whiten @ DPA_whiten
+                    Fx_red.append( F_red_whiten @ DPA_whiten)
+
+                    MNx.append(  M_whiten.T @ DPA_whiten )
+                    MNM.append( M_whiten.T @ M_whiten )
+                    
+                    xNx += DPA_whiten @ DPA_whiten 
+                    iss+=1
+
+                FNF.append( FNF_psr )
+                FM.append( np.vstack( [np.hstack(FM_adm) , sl.block_diag(*FM_red)] ) )
+                Fx.append( np.concatenate(   [ Fx_adm , np.concatenate(Fx_red) ] ) )
+                
+                
+
+
+
             FNF = sl.block_diag(*FNF)
             MNM = sl.block_diag(*MNM)
             FM  = sl.block_diag(*FM)
-            Mx = np.concatenate(Mx)
+            MNx = np.concatenate(MNx)
             Fx = np.concatenate(Fx)
-            #print(FNF.shape,MNM.shape,FM.shape,Mx.shape,Fx.shape)
 
             #=============================================#
             #     Combine                                 #
@@ -649,7 +648,7 @@ class Array():
             lnl_white = -0.5 * xNx  - 0.5*N_logdet  - 0.5 * np.log( 2*np.pi ) * NOBS_TOTAL
             PhiFNF = Phi_inv + FNF
             MCM = deepcopy(MNM)
-            MCx = deepcopy(Mx)
+            MCx = deepcopy(MNx)
 
             if Phi_inv.size != 0 :
                 
@@ -660,11 +659,11 @@ class Array():
                 MCx = MCx -  FM.T @ PhiFNF_inv @ Fx
             else:
                 lnl_corr = 0
-                
-                
+
             MCM_inv = sl.inv(MCM) ; MCM_logdet = nl.slogdet(MCM)[1]
             lnl_M = 0.5 * MCx.T @ MCM_inv @ MCx - 0.5 * MCM_logdet  + 0.5 * np.log( 2*np.pi ) * ALL_ORDERS
             lnl = lnl_white  + lnl_corr + lnl_M
+
             #print(lnl)
             return  lnl
                 
