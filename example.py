@@ -8,13 +8,13 @@ import time
 
 mock_method = "data"
 
-dlnprior = "\" 0\""
+dlnprior = "\" 10\""
 order = "2"
-iono = "none"
+iono = "subt"
 subset = "10cm"
 model = "nf"
 nfreqs = "3"
-mpi = 6
+mpi = 10
 nsamp = 5000000
 
 def run( Range=range(0,51),ipsr=-1):
@@ -37,7 +37,7 @@ def run( Range=range(0,51),ipsr=-1):
             argument = f"mpiexec -np {mpi} "+ argument
         os.system(argument + " &")
         
-run([50],-1)
+run([47,48,49],-1)
 #run()
 #for ipsr in range(8,22):
 #    run(ipsr=ipsr)

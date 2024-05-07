@@ -35,7 +35,7 @@ def run( Range=range(0,51),ipsr=-1):
             argument = f"mpiexec -np {mpi} "+ argument
         os.system(argument + " &")
         
-for ipsr in range(0,30):
+for ipsr in [7]:
     try:
         run(ipsr=ipsr)
         time.sleep(350)
