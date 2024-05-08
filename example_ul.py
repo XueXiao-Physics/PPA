@@ -6,14 +6,14 @@ import time
 #dlnprior = float(sys.argv[2])
 
 
-mock_method = "data"
+if_mock = "False"
 
 dlnprior = "\" 0\""
 order = "2"
 iono = "subt"
 subset = "10cm"
 model = "af"
-nfreqs = 5
+nfreqs = -1
 mpi = 0
 nsamp = 5000000
 
@@ -23,7 +23,7 @@ def run( Range=range(0,51),ipsr=-1):
         lma_min = lma_mid-0.05
         lma_max = lma_mid+0.05
         argument = "python run_one.py "\
-             + "-mock_method "+mock_method\
+             + f" -if_mock "+if_mock\
              + f" -order {order}"\
              + f" -lma_min {lma_min:.2f} -lma_max {lma_max:.2f}"\
              + f" -dlnprior " + dlnprior\
@@ -38,7 +38,3 @@ def run( Range=range(0,51),ipsr=-1):
         os.system(argument + " &")
         
 run(range(0,51),-1)
-#run()
-#for ipsr in range(8,22):
-#    run(ipsr=ipsr)
-#    time.sleep(1400)

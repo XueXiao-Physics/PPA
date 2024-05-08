@@ -11,7 +11,7 @@ module_path = os.path.dirname(__file__) + "/"
 
 
 KPC_TO_S = sc.parsec*1e3/sc.c
-TREF = 54550.
+TREFd = 54550.
 EARTH_TO_GC= 8.3
 GC_LOC = np.array([-0.45545384, -7.24952861, -4.01583076])
 FYR = 1/sc.year
@@ -95,7 +95,7 @@ def Load_All_Pulsar_Info():
 #=========================================================#
 class Pulsar():
 
-    def __init__( self, PSR_DICT , order=None , iono=None , nfreqs=5 , subset="all" ):
+    def __init__( self, PSR_DICT , order=None , iono=None , nfreqs_dict=None , subset="all" ):
         self.PSR_NAME = PSR_DICT["PSR"]
         #self.import_psr()
 
@@ -135,22 +135,23 @@ class Pulsar():
 
 
         for SS in self.SUBSETS:
-            TOA1 , DPA , DPA_ERR = np.loadtxt( PSR_DICT["DATA"][SS] )
-            TOA2,  RM , RM_ERR = np.loadtxt( PSR_DICT["RM"][SS] )
+            TOAd1 , DPA , DPA_ERR = np.loadtxt( PSR_DICT["DATA"][SS] )
+            TOAd2,  RM , RM_ERR = np.loadtxt( PSR_DICT["RM"][SS] )
             # Finding overlap TOA
-            TOA , idx1 , idx2 = np.intersect1d(TOA1,TOA2, return_indices=True)
+            TOAd , idx1 , idx2 = np.intersect1d(TOAd1,TOAd2, return_indices=True)
             
             DPA = DPA[idx1]
             DPA_ERR = DPA_ERR[idx1]
             RM = RM[idx2]
             RM_ERR = RM_ERR[idx2]
 
-            TOAs = ( TOA - TREF ) * sc.day
+            TOAs = ( TOAd - TREFd ) * sc.day
             TOBSs = TOAs.max() - TOAs.min()
             NOBS = len(TOAs)
+
+            NFREQS = nfreqs_dict[SS]
             DES_MTX = self.get_design_matrix( TOAs , order = order )
-            
-            FREQS , F_RED = self.get_F_red( TOA , nfreqs = nfreqs )
+            FREQS , F_RED = self.get_F_red( TOAs , nfreqs = NFREQS )
             self.F_RED.append(F_RED)
             self.FREQS.append(FREQS)
 
@@ -212,6 +213,7 @@ class Pulsar():
             F_red = np.zeros( ( nfreqs*2 , len(TOAs)) ) 
             TOBSs = TOAs.max() - TOAs.min() 
             freqs = 1 / TOBSs * np.arange(1,1+nfreqs)
+            #print(TOBSs , freqs)
             if nfreqs > 0:
                 for i in range( nfreqs ):
                     F_red[2*i,:]   = np.cos( 2 * np.pi * freqs[i] * TOAs )
@@ -312,70 +314,86 @@ class Array():
 
         return PSR_POS,DL_MTX
 
+    #=====================================================#
+    #    Phi, for each model                              #
+    #=====================================================#
 
-    def Get_Phi_inv( self , v , ma, sDTE , Sa2 , Sred2 , adm_signal , return_ADM=False ):
-        # this function is to combine every phi into a combined matrix.
+    def Get_Phi_inv_red( self, Sred2 ):
         Sred2 = self.Fold_Array(Sred2)
-        Phi_inv_vec = deepcopy( self.PHI_BASE_RED_VEC )
+        Phi_inv_red = deepcopy( self.PHI_BASE_RED_VEC )
         Phi_logdet = 0
         for p in range(self.NPSR):
             for ss in range(self.NSUBSETS_by_SS[p]):
-                Phi_inv_vec[p][ss] = Phi_inv_vec[p][ss] / Sred2[p][ss]
-                Phi_logdet += np.sum( np.log( Sred2[p][ss] ) )
+                Phi_inv_red[p][ss] =    Phi_inv_red[p][ss] / Sred2[p][ss]
+                Phi_logdet += np.sum( -np.log( Phi_inv_red[p][ss] ) )
+        return Phi_inv_red , Phi_logdet
+    
+
+    def Get_Phi_ADM(self,v,ma,sDTE,Sa2):
+
+        DTE = self.DTE0 * sDTE
+        PSR_POS , DL_MTX = self.Get_Star_Locations( sDTE )
+        omega = ma * sc.eV / sc.hbar
+        lc = get_lc( v , ma )
+
+
+        sincpq_all =  np.sinc( DL_MTX / lc / np.pi )
+        sincp_all = np.sinc( DTE/ lc / np.pi )
+        cp_all = np.cos( omega * DTE * KPC_TO_S )
+        sp_all = np.sin( omega * DTE * KPC_TO_S )
+        cpq_all = cp_all[:,None]*cp_all[None,:] + sp_all[:,None]*sp_all[None,:]
+        spq_all = sp_all[:,None]*cp_all[None,:] - cp_all[:,None]*sp_all[None,:]    
+        
+        
+        ADM_Phi_compact = np.zeros( (self.NPSR*2,self.NPSR*2 ))
+        pointer_x = 0
+        for p in range(self.NPSR):
+            pointer_y = 0
+            for q in range(self.NPSR):
+                sincpq = sincpq_all[p,q];sincp = sincp_all[p];sincq = sincp_all[q]
+                cpq = cpq_all[p,q]; spq = spq_all[p,q]
+                cp = cp_all[p] ; sp = sp_all[p] ; cq = cp_all[q] ; sq = sp_all[q]
+                
+                Phi_ccss = 1 + sincpq*cpq - sincp*cp - sincq*cq
+                Phi_sc =  sincpq*spq - sincp*sp + sincq*sq
+                Phi_cs = -Phi_sc
+
+                Phi_pq = np.array([[Phi_ccss,Phi_cs],[Phi_sc,Phi_ccss]]) * Sa2
+                ADM_Phi_compact[ pointer_x:pointer_x+2 , pointer_y:pointer_y+2 ] = Phi_pq
+                pointer_y += 2
+            pointer_x += 2
+        #ADM_Phi_inv_compact , ADM_Phi_logdet = svd_inv(ADM_Phi_compact)
+        # ADM_Phi_inv_compact = sl.inv(ADM_Phi_compact) ; ADM_Phi_logdet = nl.slogdet(ADM_Phi_compact)[1]
+        # Phi_logdet += ADM_Phi_logdet
+
+        return ADM_Phi_compact
+
+
+    def Get_Phi_inv_all( self , v , ma, sDTE , Sa2 , Sred2 , adm_signal  ):
+        # this function is to combine every phi into a combined matrix.
+
+        Phi_inv_vec , Phi_logdet = self.Get_Phi_inv_red(Sred2)
 
         
         if adm_signal in [ "none"]:
             Phi_inv = np.diag( np.concatenate([x for xs in Phi_inv_vec for x in xs]) )
             
         
-        elif adm_signal in ["auto","full"] :
-            DTE = self.DTE0 * sDTE
-            PSR_POS , DL_MTX = self.Get_Star_Locations( sDTE )
-            omega = ma * sc.eV / sc.hbar
-            lc = get_lc( v , ma )
 
-
-            sincpq_all =  np.sinc( DL_MTX / lc / np.pi )
-            sincp_all = np.sinc( DTE/ lc / np.pi )
-            cp_all = np.cos( omega * DTE * KPC_TO_S )
-            sp_all = np.sin( omega * DTE * KPC_TO_S )
-            cpq_all = cp_all[:,None]*cp_all[None,:] + sp_all[:,None]*sp_all[None,:]
-            spq_all = sp_all[:,None]*cp_all[None,:] - cp_all[:,None]*sp_all[None,:]    
-
+        elif adm_signal in ["auto","full"]:
+            Phi_ADM_compact = self.Get_Phi_ADM( v , ma, sDTE , Sa2 )
             if adm_signal == "auto":
+                pointer = 0
                 for p in range(self.NPSR):
-                    sincpq = sincpq_all[p,p];sincp = sincq = sincp_all[p]
-                    cpq = cpq_all[p,p]
-                    cp = cq = cp_all[p]
-                    
-                    Phi_ccss = ( 1 + sincpq*cpq - sincp*cp - sincq*cq ) * Sa2
-                    Phi_inv_pq = 1 / np.array([ Phi_ccss , Phi_ccss ]) 
-                    Phi_inv_vec[p].insert( 0 , Phi_inv_pq )
-                    Phi_logdet += np.log(  Phi_ccss )* 2
+                    Phi_pq = np.diag( Phi_ADM_compact[pointer:pointer+2 , pointer:pointer+2] )
+                    Phi_inv_vec[p].insert( 0 , 1/Phi_pq )
+                    Phi_logdet += np.sum(np.log(  Phi_pq ))
+                    pointer += 2
 
                 Phi_inv = np.diag( np.concatenate([x for xs in Phi_inv_vec for x in xs]) )
-            
+                
             elif adm_signal == "full":
-
-                ADM_Phi_compact = np.zeros( (self.NPSR*2,self.NPSR*2 ))
-                pointer_x = 0
-                for p in range(self.NPSR):
-                    pointer_y = 0
-                    for q in range(self.NPSR):
-                        sincpq = sincpq_all[p,q];sincp = sincp_all[p];sincq = sincp_all[q]
-                        cpq = cpq_all[p,q]; spq = spq_all[p,q]
-                        cp = cp_all[p] ; sp = sp_all[p] ; cq = cp_all[q] ; sq = sp_all[q]
-                        
-                        Phi_ccss = 1 + sincpq*cpq - sincp*cp - sincq*cq
-                        Phi_sc =  sincpq*spq - sincp*sp + sincq*sq
-                        Phi_cs = -Phi_sc
-
-                        Phi_pq = np.array([[Phi_ccss,Phi_cs],[Phi_sc,Phi_ccss]]) * Sa2
-                        ADM_Phi_compact[ pointer_x:pointer_x+2 , pointer_y:pointer_y+2 ] = Phi_pq
-                        pointer_y += 2
-                    pointer_x += 2
-                #ADM_Phi_inv_compact , ADM_Phi_logdet = svd_inv(ADM_Phi_compact)
-                ADM_Phi_inv_compact = sl.inv(ADM_Phi_compact) ; ADM_Phi_logdet = nl.slogdet(ADM_Phi_compact)[1]
+                ADM_Phi_inv_compact = sl.inv(Phi_ADM_compact) ; ADM_Phi_logdet = nl.slogdet(Phi_ADM_compact)[1]
                 Phi_logdet += ADM_Phi_logdet
 
                 # now put everything together
@@ -400,13 +418,12 @@ class Array():
                         pointer2_y += 2
                     pointer_x += ndim_by_psr[p] 
                     pointer2_x += 2
-
-                if return_ADM:
-                    return ADM_Phi_compact
         
         return Phi_inv , Phi_logdet
 
-
+    #=====================================================#
+    #    F for axion                                      #
+    #=====================================================#
 
     def Get_F_ADM(self,ma ,adm_signal):
 
@@ -439,18 +456,23 @@ class Array():
     def Load_bestfit_params(self):
         l10_EFAC = []
         l10_EQUAD = []
+        l10_S0red = []
+        Gamma = []
+
 
         with open(module_path+"Parfile/spa_results.json",'r') as f:
             spa_results = json.load(f)
 
         for P in range( self.NPSR ):
-            PSR_NAME = self.PSR_NAMES[P]
+            psrn = self.PSR_NAMES[P]
             for S in self.SUBSETS[P]:
 
-                l10_EFAC.append(spa_results[PSR_NAME][S][0])
-                l10_EQUAD.append(spa_results[PSR_NAME][S][1])
+                l10_EFAC.append(spa_results[psrn][S][0])
+                l10_EQUAD.append(spa_results[psrn][S][1])
+                l10_S0red.append(spa_results[psrn][S][2])
+                Gamma.append(spa_results[psrn][S][3])
 
-        return np.array(l10_EFAC) , np.array(l10_EQUAD)
+        return np.array(l10_EFAC) , np.array(l10_EQUAD) , np.array(l10_S0red) , np.array(Gamma)
     
 
 
@@ -460,10 +482,10 @@ class Array():
     def Gen_White_Mock_Data( self , seed=10):
 
         np.random.seed(seed)
-        l10_EFAC , l10_EQUAD  = self.Load_bestfit_params()
+        l10_EFAC , l10_EQUAD , l10_S0red , Gamma  = self.Load_bestfit_params()
         EFAC = 10 ** l10_EFAC
         EQUAD = 10 ** l10_EQUAD
- 
+        S0red = 10 ** l10_S0red 
 
         iSS = 0
         DPA = np.zeros(self.NPSR,dtype="object")
@@ -479,50 +501,75 @@ class Array():
         return DPA
 
 
-    def Gen_Mock_Data( self , mock_lma , mock_lSa , adm_signal  , seed=10 ):
+    def Gen_Mock_Data( self , noise_type="red" , adm_signal="none" , mock_lma = None , mock_lSa = None , seed=10 ):
 
 
         np.random.seed(seed)
 
         # Generate white noise first
+        l10_EFAC , l10_EQUAD , l10_S0red , Gamma  = self.Load_bestfit_params()
         DPA = self.Gen_White_Mock_Data(seed=seed)
-        if adm_signal in ['none']:
-            return DPA
+
+
+        S0red = 10**l10_S0red
+
+        # Red, assume nothing
+        FREQS_by_SS = [ x for xs in self.FREQS for x in xs]
+        TOBSs_by_SS = [x for xs in self.TOBSs for x in xs]
+        Sred2 = [  np.repeat( (FREQS_by_SS[i]/FYR)**Gamma[i] * S0red[i]**2 *  1/FYR/TOBSs_by_SS[i] ,2) for i in range(self.NSUBSETS_TOTAL)]
         
-        elif adm_signal in ['full','auto']:
+        Phi_inv_red = self.Get_Phi_inv_red(Sred2)[0]
+        
+        F_red = self.F_RED
+        
 
-            # Red, assume nothing
-            FREQS_by_SS = [ x for xs in self.FREQS for x in xs]
-            TOBSs_by_SS = [x for xs in self.TOBSs for x in xs]
-            S0red = np.ones(self.NSUBSETS_TOTAL)
-            Gamma = np.zeros(self.NSUBSETS_TOTAL)
-            Sred2 = [  np.repeat( (FREQS_by_SS[i]/FYR)**Gamma[i] * S0red[i]**2 *  1/FYR/TOBSs_by_SS[i] ,2) for i in range(self.NSUBSETS_TOTAL)]
-            
+        # here we add noise
+        if noise_type == 'white':
+            pass
+        elif noise_type == "red":
+            for p in range(self.NPSR):
+                for ss in range(self.NSUBSETS_by_SS[p]):
+                    Phi_red_ss = np.diag(1/np.array(Phi_inv_red[p][ss]))
+                    if Phi_red_ss.size >0:
+                        Fmock = np.random.multivariate_normal(np.zeros(len(Phi_red_ss)),Phi_red_ss)
+                        DPA[p][ss] += Fmock @ F_red[p][ss] 
+                    else:
+                        pass
+        else:
+            raise
 
-            # For axion
+        
+        # here we add axion signal
+
+        if adm_signal == "none":
+            return DPA
+        elif adm_signal in ["full","auto"]:
             ma = 10**mock_lma
             Sa = 10**mock_lSa
-            Phi  = self.Get_Phi_inv( 1e-3 , ma , np.ones(self.NPSR) , Sa**2 , Sred2 , "full" , return_ADM=True )
-            F_by_psr = self.Get_ADM_F( ma , return_ADM=True)
-            if adm_signal == 'auto':
-                Phi = np.diag(np.diag(Phi))
-
-            Fmock = np.random.multivariate_normal(np.zeros(len(Phi)),Phi) 
+            F_adm = self.Get_F_ADM(ma,adm_signal )[0]
+            Phi_adm = self.Get_Phi_ADM(1e-3,ma , np.ones(22) , Sa**2)
+            if adm_signal == "auto":
+                Phi_adm = np.diag(np.diag(Phi_adm))
+            elif adm_signal == "full":
+                pass
+            else:
+                raise
+            Fmock = np.random.multivariate_normal(np.zeros(len(Phi_adm)),Phi_adm)
+            # now devide it
+            
             for p in range(self.NPSR):
-                mock = Fmock[2*p : 2*p+2]@F_by_psr[p]
-                pointer = 0
                 for ss in range(self.NSUBSETS_by_SS[p]):
-                    NOBS = self.NOBS[p][ss]
-                    DPA[p][ss] += mock[pointer:pointer+NOBS]
-                    pointer += NOBS
+                    DPA[p][ss] += Fmock[2*p : 2*p+2]@F_adm[p][ss]
+                p+=2
 
-        
+
+
         return DPA
-        
+        #  Phi_ADM = 
 
 
     #=====================================================#
-    #    For statistics                                   #
+    #    Finally, likelihood calculation                  #
     #=====================================================#
 
     def Generate_Lnlike_Function( self , adm_signal ):    
@@ -535,9 +582,6 @@ class Array():
         ORDERS_by_SS = [ len(x) for x in DES_MTX_by_SS ]
 
         FREQS_by_SS = [x for xs in self.FREQS for x in xs]
-
-
-        NFREQS_by_psr = [np.sum([ len(x) for x in xs ]) for xs in self.FREQS ]
         TOBSs_by_SS = [x for xs in self.TOBSs for x in xs]
 
         NOBS_TOTAL = self.NOBS_TOTAL
@@ -565,7 +609,7 @@ class Array():
             #=============================================#
 
             Sred2 = [  np.repeat( (FREQS_by_SS[i]/FYR)**Gamma[i] * S0red[i]**2 *  1/FYR/TOBSs_by_SS[i] ,2) for i in range(self.NSUBSETS_TOTAL)]                
-            Phi_inv , Phi_logdet = self.Get_Phi_inv( 1e-3 , ma , sDTE , Sa**2 , Sred2 , adm_signal )
+            Phi_inv , Phi_logdet = self.Get_Phi_inv_all( 1e-3 , ma , sDTE , Sa**2 , Sred2 , adm_signal )
  
             # It is very important that Sa and S0 are not too different from each other.
             F_red_byss = self.F_RED
@@ -583,8 +627,8 @@ class Array():
             MNx = []
             iss = 0
             for p in range(self.NPSR):
-                nfreqs = NFREQS_by_psr[p]
-                FNF_psr = np.zeros( (adm_dim + 2*nfreqs , adm_dim + 2*nfreqs ) )
+                nfreqs_psr = np.sum(self.NFREQS[p])
+                FNF_psr = np.zeros( (adm_dim + 2*nfreqs_psr , adm_dim + 2*nfreqs_psr ) )
 
                 FM_adm = []
                 FM_red = []
@@ -594,6 +638,7 @@ class Array():
                 # all these mess are because of block matrices
                 for ss in range(self.NSUBSETS_by_SS[p]):
 
+                    nfreqs_ss = self.NFREQS[p][ss]
                     NEW_DPA_ERR = np.sqrt(N_by_SS[iss].astype(np.float64))
                     DPA = DPA_by_SS[iss].astype(np.float64)
                     M = self.DES_MTX[p][ss].astype(np.float64).T
@@ -605,13 +650,13 @@ class Array():
                     DPA_whiten = DPA       / NEW_DPA_ERR
                     M_whiten   = M         / NEW_DPA_ERR[:,None]
 
-                    pointer = adm_dim + ss * 2 * nfreqs
+                    pointer = adm_dim
+                    dpointer = 2 * nfreqs_ss
                     FNF_psr[:adm_dim,:adm_dim] += F_adm_whiten @ F_adm_whiten.T
-
-                    FNF_psr[ pointer : pointer+nfreqs*2 , pointer : pointer+nfreqs*2 ] = F_red_whiten @ F_red_whiten.T
+                    FNF_psr[ pointer : pointer+dpointer , pointer : pointer+dpointer ] = F_red_whiten @ F_red_whiten.T
                     F_ra = F_red_whiten @  F_adm_whiten.T
-                    FNF_psr[ pointer : pointer+nfreqs*2 , :adm_dim ] = F_ra
-                    FNF_psr[:adm_dim , pointer : pointer+nfreqs*2 ] = F_ra.T
+                    FNF_psr[ pointer : pointer+dpointer , :adm_dim ] = F_ra
+                    FNF_psr[:adm_dim , pointer : pointer+dpointer ] = F_ra.T
 
                     FM_adm.append( F_adm_whiten @ M_whiten )
                     FM_red.append( F_red_whiten @ M_whiten )
@@ -625,15 +670,13 @@ class Array():
                     
                     xNx += DPA_whiten @ DPA_whiten 
                     iss+=1
+                    pointer + dpointer
 
                 FNF.append( FNF_psr )
                 FM.append( np.vstack( [np.hstack(FM_adm) , sl.block_diag(*FM_red)] ) )
                 Fx.append( np.concatenate(   [ Fx_adm , np.concatenate(Fx_red) ] ) )
                 
                 
-
-
-
             FNF = sl.block_diag(*FNF)
             MNM = sl.block_diag(*MNM)
             FM  = sl.block_diag(*FM)

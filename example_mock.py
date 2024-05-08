@@ -7,7 +7,9 @@ import time
 
 
 # Mock data properties
-mock_method = "full"
+if_mock = "True"
+mock_noise = "red"
+mock_adm = "none"
 mock_lma = "-22.5"
 mock_lSa = "-2.9"
 mock_seed = "22"
@@ -19,7 +21,7 @@ order = "2"
 iono = "subt"#"Subt"
 subset = "10cm"
 model = "nf"
-nfreqs = "4"
+nfreqs = -1
 mpi = 0
 nsamp = 5000000
 
@@ -29,7 +31,9 @@ def run(Range=range(0,51),ipsr=-1):
         lma_min = lma_mid-0.05
         lma_max = lma_mid+0.05
         argument = "python run_one.py "\
-             + "-mock_method "+mock_method\
+             + f"-if_mock "+if_mock\
+             + f" -mock_noise "+ mock_noise\
+             + f" -mock_adm " + mock_adm\
              + f" -mock_lma " + mock_lma\
              + f" -mock_lSa " + mock_lSa\
              + f" -mock_seed " + mock_seed\
@@ -39,17 +43,13 @@ def run(Range=range(0,51),ipsr=-1):
              + f" -iono " + iono\
              + f" -subset " + subset\
              + f" -model " + model\
-             + f" -nfreqs " + nfreqs\
+             + f" -nfreqs {nfreqs}"\
              + f" -nsamp {nsamp}"\
              +  " -pulsar " + str(ipsr)   
         if mpi != 0:
             argument = f"mpiexec -np {mpi} "+ argument
         
         os.system(argument + " &")
+run([3],-1)
+#run(range(0,51),-1)
 
-run(range(0,51),-1)
-#run(Range=np.arange(0,30))
-#run()
-#for ipsr in range(8,22):
-#    run(ipsr=ipsr)
-#    time.sleep(1400)

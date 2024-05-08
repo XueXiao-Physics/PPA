@@ -26,7 +26,10 @@ parser.add_argument("-dlnprior" , action = "store" , type = float , default="0" 
 parser.add_argument("-nsamp"    , action = "store" , type = int , default = 5000000)
 
 # for mock data
-parser.add_argument("-mock_method" , action = "store", choices=["none" , "white" , "auto" ,"full","data"] , default="data")
+parser.add_argument("-if_mock"    , action = "store", choices=["True","False"] , default="False")
+parser.add_argument("-mock_noise" , action = "store", choices=["white","red"]  , default="red") 
+parser.add_argument("-mock_adm"   , action = "store", choices=["none","auto","full"] , default="none")
+
 parser.add_argument("-mock_lma"    , action = "store" , type = float , default = "-22.0"  )
 parser.add_argument("-mock_lSa"    , action = "store" , type = float , default = "-2.5" )
 parser.add_argument("-mock_seed"   , action = "store" , type = int , default = "10" )
@@ -37,7 +40,7 @@ parser.add_argument("-pulsar"      , action = "store" , type = int , default="-1
 parser.add_argument("-iono"        , action = "store", choices=["none","subt"] , default='subt')
 parser.add_argument("-subset"      , action = "store", choices=["10cm","20cm","all"] , default = "all" )
 parser.add_argument("-model"        , action = "store", choices = ["af" , "na" , "nf","a","n","f"] , default = "af" )
-parser.add_argument("-nfreqs"       , action = "store", type = int , default="0" )
+parser.add_argument("-nfreqs"       , action = "store", type = int , default="-1" )
 
 args = parser.parse_args()
 
@@ -49,9 +52,26 @@ tag_ana = f"_ana_d{args.dlnprior:.0f}_o{args.order}_r{args.nfreqs}_i" + args.ion
 
 PSR_DICT = ppa.Load_All_Pulsar_Info()
 
-pulsars = [ ppa.Pulsar( PSR_DICT[psrn] , order = args.order \
-                       , iono = args.iono , subset=args.subset \
-                        , nfreqs=args.nfreqs ) for psrn in PSR_DICT ]
+
+if args.nfreqs >=0:
+    pulsars = [ ppa.Pulsar( PSR_DICT[psrn] , order = args.order \
+                       , iono = args.iono , subset = args.subset \
+                        , nfreqs_dict={"10cm":args.nfreqs,"20cm":args.nfreqs} ) for psrn in PSR_DICT ]
+    
+elif args.nfreqs == -1:
+    pulsars = []
+    for psrn in PSR_DICT:
+        if psrn in ["J0437-4715" ]:
+            pulsars.append(ppa.Pulsar(PSR_DICT[psrn],order = args.order \
+                       , iono = args.iono , subset=args.subset,nfreqs_dict={"10cm":5,"20cm":0} ))
+        elif psrn in [ "J1022+1001" , "J1713+0747" , "J1909-3744"]:
+            pulsars.append(ppa.Pulsar(PSR_DICT[psrn],order = args.order \
+                       , iono = args.iono , subset=args.subset,nfreqs_dict={"10cm":30,"20cm":0}))
+        else:
+            pulsars.append(ppa.Pulsar(PSR_DICT[psrn],order = args.order \
+                       , iono = args.iono , subset=args.subset,nfreqs_dict={"10cm":0,"20cm":0}))
+else:
+    raise
 
 
 PSR_NAME_LIST = [psr.PSR_NAME for psr in pulsars]
@@ -74,23 +94,18 @@ tag_ana += f"Np{NPSR}"
 #    Construct the array                              #
 #=====================================================#
 
-
-if args.mock_method == "white":
-    array.DPA = array.Gen_Mock_Data(None,None,'none',seed=args.mock_seed)
-    tag = "mock_"+args.mock_method+"_%i"%(args.mock_seed) + tag_ana
-
-elif args.mock_method == "auto":
-    array.DPA = array.Gen_Mock_Data(args.mock_lma , args.mock_lSa,"auto",seed=args.mock_seed)
-    tag = "mock_"+args.mock_method+"_%.1f_%.1f_%i"%(args.mock_lma,args.mock_lSa,args.mock_seed) + tag_ana
-
-elif args.mock_method == "full":
-    array.DPA = array.Gen_Mock_Data(args.mock_lma , args.mock_lSa,"full",seed=args.mock_seed)
-    tag = "mock_"+args.mock_method+"_%.1f_%.1f_%i"%(args.mock_lma,args.mock_lSa,args.mock_seed) + tag_ana
-
-elif args.mock_method == "data":
-    tag = "data" + tag_ana
-
-else: 
+if args.if_mock =="True":
+    array.DPA = array.Gen_Mock_Data( noise_type=args.mock_noise , adm_signal=args.mock_adm \
+                                    ,mock_lma=args.mock_lma ,mock_lSa=args.mock_lSa  , seed=args.mock_seed)
+    if args.mock_adm =="none":
+        tag = "mock_"+args.mock_noise+"_se%i"%(args.mock_seed) + tag_ana
+    else:
+        tag = "mock_" + args.mock_noise + "_" + args.mock_adm \
+            + "_%.1f_%.1f_se%i"%(args.mock_lma,args.mock_lSa,args.mock_seed) \
+                + tag_ana
+elif args.if_mock == "False":
+    tag = "data"+tag_ana
+else:
     raise
 
 
@@ -99,32 +114,10 @@ print(tag)
 
 ones = np.ones(array.NPSR)
 zeros = np.zeros(array.NPSR)
-if args.model == "n":
-    lnlike_sig0_raw = array.Generate_Lnlike_Function( "none" )
-    lnlike_sig1_raw = array.Generate_Lnlike_Function( "none" )
+model_mapper = {"n":"none" , "a":"auto" , "f":"full"}
+lnlike_sig0_raw = array.Generate_Lnlike_Function( model_mapper[args.model[0]] )
+lnlike_sig1_raw = array.Generate_Lnlike_Function( model_mapper[args.model[1]] )
 
-elif args.model == "a":
-    lnlike_sig0_raw = array.Generate_Lnlike_Function( "auto" )
-    lnlike_sig1_raw = array.Generate_Lnlike_Function( "auto" )
-
-elif args.model == "f":
-    lnlike_sig0_raw = array.Generate_Lnlike_Function( "full" )
-    lnlike_sig1_raw = array.Generate_Lnlike_Function( "full" )
-
-elif args.model == "af":
-    lnlike_sig0_raw = array.Generate_Lnlike_Function( "auto" )
-    lnlike_sig1_raw = array.Generate_Lnlike_Function( "full" )
-
-elif args.model == "na":
-    lnlike_sig0_raw = array.Generate_Lnlike_Function( "none" )
-    lnlike_sig1_raw = array.Generate_Lnlike_Function( "auto" )
-
-elif args.model == "nf":
-    lnlike_sig0_raw = array.Generate_Lnlike_Function( "none" )
-    lnlike_sig1_raw = array.Generate_Lnlike_Function( "full" )
-    
-else:
-    raise
 #print(tag)
 
 
@@ -166,7 +159,7 @@ def lnlike_sig1( params ):
 l10_EFAC_lp , l10_EFAC_sp = ppa.gen_uniform_lnprior(-2,2)
 l10_EQUAD_lp , l10_EQUAD_sp = ppa.gen_uniform_lnprior(-8,2)
 l10_S0red_lp , l10_S0red_sp = ppa.gen_uniform_lnprior(-8,2)
-Gamma_lp    , Gamma_sp = ppa.gen_uniform_lnprior(-3,3)
+Gamma_lp    , Gamma_sp = ppa.gen_uniform_lnprior(-8,2)
 sDTE_lp = array.sDTE_LNPRIOR
 l10_ma_lp , l10_ma_sp = ppa.gen_uniform_lnprior(args.lma_min,args.lma_max)
 l10_Sa_lp , l10_Sa_sp = ppa.gen_uniform_lnprior(-8,2)
@@ -232,7 +225,7 @@ def lnprior( all_params ):
 
 def get_init():
 
-    #l10_EFAC_bf , l10_EQUAD_bf = array.Load_bestfit_params( )
+    #l10_EFAC_bf , l10_EQUAD_bf , l10_S0red_bf , Gamma_bf = array.Load_bestfit_params( )
     sDTE = np.random.rand(len(ones))*0.1 + 1 - 0.05
     init_val = [nmodel_sp()] +[l10_EFAC_sp() for i in range(NSS)]\
                              + [l10_EQUAD_sp() for i in range(NSS)]\
