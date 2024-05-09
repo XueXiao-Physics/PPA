@@ -132,6 +132,7 @@ class Pulsar():
         self.RM = []
         self.RM_ERR = []
         self.WAVE_LENGTH = []
+        self.IONO = []
 
 
         for SS in self.SUBSETS:
@@ -148,8 +149,10 @@ class Pulsar():
             TOAs = ( TOAd - TREFd ) * sc.day
             TOBSs = TOAs.max() - TOAs.min()
             NOBS = len(TOAs)
-
-            NFREQS = nfreqs_dict[SS]
+            try:
+                NFREQS = nfreqs_dict[ iono+"_"+SS ]
+            except:
+                NFREQS = -1 # meaning no data
             DES_MTX = self.get_design_matrix( TOAs , order = order )
             FREQS , F_RED = self.get_F_red( TOAs , nfreqs = NFREQS )
             self.F_RED.append(F_RED)
@@ -173,12 +176,14 @@ class Pulsar():
                 raise
 
 
-            if iono == "none":
+            if iono == "noiono":
                 self.DPA.append(DPA)
                 self.DPA_ERR.append(DPA_ERR)
-            elif iono == "subt":
+                self.IONO.append("noiono")
+            elif iono == "ionfr":
                 self.DPA.append( DPA + WAVE_LENGTH**2 * RM )
                 self.DPA_ERR.append( np.sqrt( DPA_ERR**2 + RM_ERR**2 * WAVE_LENGTH**4 ) )
+                self.IONO.append("ionfr")
             else:
                 raise
 
@@ -242,6 +247,7 @@ class Array():
         self.PSR_NAMES = [ psr.PSR_NAME for psr in Pulsars ]
         self.NPSR = len(Pulsars)
         self.SUBSETS = [ psr.SUBSETS for psr in Pulsars ]
+        self.IONO = [psr.IONO for psr in Pulsars]
         self.NOBS = [ psr.NOBS for psr in Pulsars]
         self.NOBS_TOTAL = np.sum([ np.sum(NOBS) for NOBS in self.NOBS ])
         
@@ -465,12 +471,12 @@ class Array():
 
         for P in range( self.NPSR ):
             psrn = self.PSR_NAMES[P]
-            for S in self.SUBSETS[P]:
-
-                l10_EFAC.append(spa_results[psrn][S][0])
-                l10_EQUAD.append(spa_results[psrn][S][1])
-                l10_S0red.append(spa_results[psrn][S][2])
-                Gamma.append(spa_results[psrn][S][3])
+            for i,S in enumerate(self.SUBSETS[P]):
+                IONO = self.IONO[P][i]
+                l10_EFAC.append(spa_results[psrn][IONO+"_"+S][0])
+                l10_EQUAD.append(spa_results[psrn][IONO+"_"+S][1])
+                l10_S0red.append(spa_results[psrn][IONO+"_"+S][2])
+                Gamma.append(spa_results[psrn][IONO+"_"+S][3])
 
         return np.array(l10_EFAC) , np.array(l10_EQUAD) , np.array(l10_S0red) , np.array(Gamma)
     
@@ -565,7 +571,6 @@ class Array():
 
 
         return DPA
-        #  Phi_ADM = 
 
 
     #=====================================================#
