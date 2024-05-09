@@ -8,7 +8,7 @@ import time
 
 # Mock data properties
 if_mock = "True"
-mock_noise = "red"
+mock_noise = "white"
 mock_adm = "none"
 mock_lma = "-22.5"
 mock_lSa = "-2.9"
@@ -50,6 +50,5 @@ def run(Range=range(0,51),ipsr=-1):
             argument = f"mpiexec -np {mpi} "+ argument
         
         os.system(argument + " &")
-run([3],-1)
-#run(range(0,51),-1)
+run()
 

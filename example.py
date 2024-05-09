@@ -8,13 +8,13 @@ import time
 
 if_mock = "False"
 
-dlnprior = "\" 10\""
+dlnprior = "\" 50\""
 order = "2"
 iono = "subt"
 subset = "10cm"
 model = "nf"
 nfreqs = -1
-mpi = 0
+mpi = 6
 nsamp = 5000000
 
 def run( Range=range(0,51),ipsr=-1):
@@ -37,4 +37,4 @@ def run( Range=range(0,51),ipsr=-1):
             argument = f"mpiexec -np {mpi} "+ argument
         os.system(argument + " &")
         
-run([47,48,49],-1)
+run([42, 45, 47, 48, 49],-1)

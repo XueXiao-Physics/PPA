@@ -39,7 +39,7 @@ parser.add_argument("-mock_seed"   , action = "store" , type = int , default = "
 parser.add_argument("-pulsar"      , action = "store" , type = int , default="-1" )
 parser.add_argument("-iono"        , action = "store", choices=["none","subt"] , default='subt')
 parser.add_argument("-subset"      , action = "store", choices=["10cm","20cm","all"] , default = "all" )
-parser.add_argument("-model"        , action = "store", choices = ["af" , "na" , "nf","a","n","f"] , default = "af" )
+parser.add_argument("-model"        , action = "store", choices = ["af" , "na" , "nf","aa","nn","ff"] , default = "af" )
 parser.add_argument("-nfreqs"       , action = "store", type = int , default="-1" )
 
 args = parser.parse_args()

@@ -11,7 +11,7 @@ order = "2"
 iono = "none"
 subset = "10cm"
 model = "ff"
-nfreqs = -1
+nfreqs = 0#-1
 mpi = 0
 nsamp = 500000
 
@@ -35,6 +35,7 @@ def run( Range=range(0,51),ipsr=-1):
             argument = f"mpiexec -np {mpi} "+ argument
         os.system(argument + " &")
         
-for ipsr in [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 17, 18, 20, 21, 22, 25, 26]:
+for ipsr in [0,5,14,21]:
+#for ipsr in [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 17, 18, 20, 21, 22, 25, 26]:
     run(ipsr=ipsr)
-    time.sleep(300)
+    time.sleep(800)

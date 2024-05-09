@@ -10,9 +10,9 @@ if_mock = "False"
 
 dlnprior = "\" 0\""
 order = "2"
-iono = "subt"
+iono = "none"
 subset = "10cm"
-model = "af"
+model = "aa"
 nfreqs = -1
 mpi = 0
 nsamp = 5000000
