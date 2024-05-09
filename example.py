@@ -10,7 +10,7 @@ if_mock = "False"
 
 dlnprior = "\" 50\""
 order = "2"
-iono = "subt"
+iono = "ionfr"
 subset = "10cm"
 model = "nf"
 nfreqs = -1

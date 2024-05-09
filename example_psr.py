@@ -8,7 +8,7 @@ if_mock = "False"
 
 dlnprior = "\" 0\""
 order = "2"
-iono = "none"
+iono = "noniono"
 subset = "10cm"
 model = "ff"
 nfreqs = 0#-1

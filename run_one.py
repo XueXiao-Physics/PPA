@@ -7,6 +7,9 @@ try:
     import mpi4py
 except Exception:
     print("no mpi4py")
+import json
+with open("ppa/Parfile/spa_results.json",'r') as f:
+    spa_results = json.load(f)
 
 
 
@@ -37,7 +40,7 @@ parser.add_argument("-mock_seed"   , action = "store" , type = int , default = "
 
 
 parser.add_argument("-pulsar"      , action = "store" , type = int , default="-1" )
-parser.add_argument("-iono"        , action = "store", choices=["none","subt"] , default='subt')
+parser.add_argument("-iono"        , action = "store", choices=["ionfr","noiono"] , default='ionfr')
 parser.add_argument("-subset"      , action = "store", choices=["10cm","20cm","all"] , default = "all" )
 parser.add_argument("-model"        , action = "store", choices = ["af" , "na" , "nf","aa","nn","ff"] , default = "af" )
 parser.add_argument("-nfreqs"       , action = "store", type = int , default="-1" )
@@ -48,7 +51,7 @@ args = parser.parse_args()
 #    Load the pulsars                                 #
 #=====================================================#
 
-tag_ana = f"_ana_d{args.dlnprior:.0f}_o{args.order}_r{args.nfreqs}_i" + args.iono  + "_" + args.subset + "_" + args.model + "_"
+tag_ana = f"_ana_d{args.dlnprior:.0f}_o{args.order}_r{args.nfreqs}_" + args.iono  + "_" + args.subset + "_" + args.model + "_"
 
 PSR_DICT = ppa.Load_All_Pulsar_Info()
 
@@ -58,20 +61,22 @@ if args.nfreqs >=0:
                        , iono = args.iono , subset = args.subset \
                         , nfreqs_dict={"10cm":args.nfreqs,"20cm":args.nfreqs} ) for psrn in PSR_DICT ]
     
+
 elif args.nfreqs == -1:
     pulsars = []
     for psrn in PSR_DICT:
-        if psrn in ["J0437-4715" ]:
-            pulsars.append(ppa.Pulsar(PSR_DICT[psrn],order = args.order \
-                       , iono = args.iono , subset=args.subset,nfreqs_dict={"10cm":5,"20cm":0} ))
-        elif psrn in [ "J1022+1001" , "J1713+0747" , "J1909-3744"]:
-            pulsars.append(ppa.Pulsar(PSR_DICT[psrn],order = args.order \
-                       , iono = args.iono , subset=args.subset,nfreqs_dict={"10cm":30,"20cm":0}))
-        else:
-            pulsars.append(ppa.Pulsar(PSR_DICT[psrn],order = args.order \
-                       , iono = args.iono , subset=args.subset,nfreqs_dict={"10cm":0,"20cm":0}))
-else:
-    raise
+        nfreqs_dict_psr = {}
+        for key in spa_results[psrn].keys():
+            psr_noise = spa_results[psrn][key]
+            if psr_noise[4]>2.3 and psr_noise[3]<=-3:
+                nfreqs_dict_psr.update( { key : 5 } )
+            elif psr_noise[4]>2.3 and psr_noise[3]>=-3:
+                nfreqs_dict_psr.update( { key : 30 } )
+            else:
+                nfreqs_dict_psr.update( { key : 0 } )
+        pulsars.append(ppa.Pulsar(PSR_DICT[psrn],order = args.order \
+                            , iono = args.iono , subset=args.subset,nfreqs_dict=nfreqs_dict_psr ))
+
 
 
 PSR_NAME_LIST = [psr.PSR_NAME for psr in pulsars]
@@ -88,25 +93,61 @@ NPSR = array.NPSR
 tag_ana += f"Np{NPSR}" 
 
 
-
-
 #=====================================================#
-#    Construct the array                              #
+#    Mock data, also load pulsars                     #
 #=====================================================#
-
 if args.if_mock =="True":
-    array.DPA = array.Gen_Mock_Data( noise_type=args.mock_noise , adm_signal=args.mock_adm \
-                                    ,mock_lma=args.mock_lma ,mock_lSa=args.mock_lSa  , seed=args.mock_seed)
+    if args.mock_noise =="white":
+        pulsars_mock = [ ppa.Pulsar( PSR_DICT[psrn] , order = args.order \
+                       , iono = args.iono , subset = args.subset \
+                        , nfreqs_dict={"10cm":0,"20cm":0} ) for psrn in PSR_DICT ]
+        
+    elif args.mock_noise =="red":
+        # for mock data we consider more red noise bins, to test the efficiency of the subtraction.
+        pulsars_mock = []
+        for psrn in PSR_DICT:
+            nfreqs_dict_psr = {}
+            for key in spa_results[psrn].keys():
+                psr_noise = spa_results[psrn][key]
+                if psr_noise[4]>2.3 and psr_noise[3]<=-3:
+                    nfreqs_dict_psr.update( { key : 30 } )
+                elif psr_noise[4]>2.3 and psr_noise[3]>=-3:
+                    nfreqs_dict_psr.update( { key : 100 } )
+                else:
+                    nfreqs_dict_psr.update( { key : 30 } )
+
+            pulsars_mock.append(ppa.Pulsar(PSR_DICT[psrn],order = args.order \
+                                , iono = args.iono , subset=args.subset,nfreqs_dict=nfreqs_dict_psr ))
+
+    PSR_NAME_LIST = [psr.PSR_NAME for psr in pulsars_mock]
+    if args.pulsar >= 0 : 
+        pulsars_mock = [pulsars_mock[args.pulsar]]
+    elif args.pulsar == -1:
+        pulsars_mock = pulsars_mock
+
+    array_mock = ppa.Array(pulsars_mock)
+
+    # important: replace the DPA of the original array
+    array.DPA = array_mock.Gen_Mock_Data( noise_type=args.mock_noise , adm_signal=args.mock_adm \
+                                     ,mock_lma=args.mock_lma ,mock_lSa=args.mock_lSa  , seed=args.mock_seed)
     if args.mock_adm =="none":
         tag = "mock_"+args.mock_noise+"_se%i"%(args.mock_seed) + tag_ana
     else:
         tag = "mock_" + args.mock_noise + "_" + args.mock_adm \
             + "_%.1f_%.1f_se%i"%(args.mock_lma,args.mock_lSa,args.mock_seed) \
                 + tag_ana
+        
 elif args.if_mock == "False":
-    tag = "data"+tag_ana
+    tag = "data" + tag_ana
 else:
     raise
+
+
+#=====================================================#
+#    Construct the array                              #
+#=====================================================#
+
+
 
 
 print(tag)

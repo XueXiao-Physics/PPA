@@ -8,7 +8,7 @@ import time
 
 # Mock data properties
 if_mock = "True"
-mock_noise = "white"
+mock_noise = "red"
 mock_adm = "none"
 mock_lma = "-22.5"
 mock_lSa = "-2.9"
@@ -18,10 +18,10 @@ mock_seed = "22"
 # Search properties
 dlnprior = "\" 0\""
 order = "2"
-iono = "subt"#"Subt"
+iono = "ionfr"
 subset = "10cm"
 model = "nf"
-nfreqs = -1
+nfreqs = 0
 mpi = 0
 nsamp = 5000000
 
