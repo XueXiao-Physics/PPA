@@ -152,7 +152,8 @@ class Pulsar():
             try:
                 NFREQS = nfreqs_dict[ iono+"_"+SS ]
             except:
-                NFREQS = -1 # meaning no data
+                NFREQS = 0 # meaning the dictionary didn't sepcify the needed information.
+
             DES_MTX = self.get_design_matrix( TOAs , order = order )
             FREQS , F_RED = self.get_F_red( TOAs , nfreqs = NFREQS )
             self.F_RED.append(F_RED)
