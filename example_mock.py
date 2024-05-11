@@ -9,19 +9,19 @@ import time
 # Mock data properties
 if_mock = "True"
 mock_noise = "red"
-mock_adm = "none"
-mock_lma = "-22.5"
-mock_lSa = "-2.9"
-mock_seed = "22"
+mock_adm = "full"
+mock_lma = "-23.0"
+mock_lSa = "-2.8"
+mock_seed = "50"
 
 
 # Search properties
 dlnprior = "\" 0\""
 order = "2"
-iono = "ionfr"
+iono = "ionfr" # even we are generating mock data, iono and subset are needed to determine TOA and error bar.
 subset = "10cm"
-model = "nf"
-nfreqs = 0
+model = "af"
+nfreqs = -1
 mpi = 0
 nsamp = 5000000
 
@@ -50,5 +50,5 @@ def run(Range=range(0,51),ipsr=-1):
             argument = f"mpiexec -np {mpi} "+ argument
         
         os.system(argument + " &")
-run()
+run([19])
 

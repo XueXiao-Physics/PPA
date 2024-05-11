@@ -8,16 +8,16 @@ import time
 
 if_mock = "False"
 
-dlnprior = "\" 50\""
-order = "2"
+dlnprior = 00
+order = 2
 iono = "ionfr"
 subset = "10cm"
-model = "nf"
+model = "ff"
 nfreqs = -1
-mpi = 6
-nsamp = 5000000
+mpi = 15
+nsamp = 50000000
 
-def run( Range=range(0,51),ipsr=-1):
+def run( Range=range(0,51),ipsr=-1  ):
     for lma_idx in Range:
         lma_mid = -23.50 + float(lma_idx)*0.1
         lma_min = lma_mid-0.05
@@ -26,7 +26,7 @@ def run( Range=range(0,51),ipsr=-1):
              + f" -if_mock "+if_mock\
              + f" -order {order}"\
              + f" -lma_min {lma_min:.2f} -lma_max {lma_max:.2f}"\
-             + f" -dlnprior " + dlnprior\
+             + f" -dlnprior {dlnprior}"\
              + f" -iono " + iono\
              + f" -subset " + subset\
              + f" -model " + model\
@@ -37,4 +37,4 @@ def run( Range=range(0,51),ipsr=-1):
             argument = f"mpiexec -np {mpi} "+ argument
         os.system(argument + " &")
         
-run([42, 45, 47, 48, 49],-1)
+run([42,45,47,48,49],-1)

@@ -36,5 +36,6 @@ def run( Range=range(0,51),ipsr=-1):
         if mpi != 0:
             argument = f"mpiexec -np {mpi} "+ argument
         os.system(argument + " &")
-        
-run(range(0,51),-1)
+ 
+run([2,3,21,26])
+#run(range(0,51),-1)

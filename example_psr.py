@@ -8,10 +8,10 @@ if_mock = "False"
 
 dlnprior = "\" 0\""
 order = "2"
-iono = "noniono"
+iono = "noiono"
 subset = "10cm"
 model = "ff"
-nfreqs = 0#-1
+nfreqs = 0
 mpi = 0
 nsamp = 500000
 
@@ -34,8 +34,10 @@ def run( Range=range(0,51),ipsr=-1):
         if mpi != 0:
             argument = f"mpiexec -np {mpi} "+ argument
         os.system(argument + " &")
-        
-for ipsr in [0,5,14,21]:
+
+for ipsr in [25,26]:
+#for ipsr in [0,5,14,21,13,17,25]:
+#for ipsr in [0,5,14,21]:
 #for ipsr in [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 17, 18, 20, 21, 22, 25, 26]:
     run(ipsr=ipsr)
-    time.sleep(800)
+    time.sleep(500)
