@@ -6,8 +6,8 @@ import time
 
 if_mock = "False"
 
-dlnprior = "\" 0\""
-order = "2"
+dlnprior = 0
+order = 0
 iono = "noiono"
 subset = "10cm"
 model = "ff"
@@ -24,7 +24,7 @@ def run( Range=range(0,51),ipsr=-1):
              + f"-if_mock "+if_mock\
              + f" -order {order}"\
              + f" -lma_min {lma_min:.2f} -lma_max {lma_max:.2f}"\
-             + f" -dlnprior " + dlnprior\
+             + f" -dlnprior {dlnprior}" \
              + f" -iono " + iono\
              + f" -subset " + subset\
              + f" -model " + model\

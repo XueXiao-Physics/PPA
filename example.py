@@ -8,7 +8,7 @@ import time
 
 if_mock = "False"
 
-dlnprior = 00
+dlnprior = 0
 order = 2
 iono = "ionfr"
 subset = "10cm"

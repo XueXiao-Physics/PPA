@@ -16,8 +16,8 @@ mock_seed = "50"
 
 
 # Search properties
-dlnprior = "\" 0\""
-order = "2"
+dlnprior = 0
+order = 2
 iono = "ionfr" # even we are generating mock data, iono and subset are needed to determine TOA and error bar.
 subset = "10cm"
 model = "af"
@@ -39,7 +39,7 @@ def run(Range=range(0,51),ipsr=-1):
              + f" -mock_seed " + mock_seed\
              + f" -order {order}"\
              + f" -lma_min {lma_min:.2f} -lma_max {lma_max:.2f}"\
-             + f" -dlnprior " + dlnprior\
+             + f" -dlnprior {dlnprior}" \
              + f" -iono " + iono\
              + f" -subset " + subset\
              + f" -model " + model\
