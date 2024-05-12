@@ -312,7 +312,7 @@ for ipsr in range(NPSR):
 
 cov = np.diag(np.ones(len(init)))
 sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=True, outDir = name,verbose=True )
-sampler.sample(np.array(init),args.nsamp,thin=200,writeHotChains=True)
+sampler.sample(np.array(init),args.nsamp,thin=400,Tmax=10,writeHotChains=True)
 
 
 

@@ -1,3 +1,6 @@
+
+# example: mpiexec -np 8 python run_spa.py red ionfr & mpiexec -np 8 python run_spa.py red noiono & mpiexec -np 8 python run_spa.py white ionfr & mpiexec -np 8 python run_spa.py white noiono &
+# example: python run_spa.py read ionfr
 #import ppa
 import ppa
 import mpi4py
@@ -9,8 +12,9 @@ import scipy.stats as ss
 import os
 import glob
 import sys
+import corner
 
-burn = 25000
+burn = 15000
 Tmax = 10
 
 def z_thermo(burn =0,outdir = "./"):
@@ -18,10 +22,13 @@ def z_thermo(burn =0,outdir = "./"):
     beta = []
     lnlmean = []
     for f in files:
-        temp = float(f.split("/")[-1].split("_")[-1][:-4])
-        beta.append(1/temp)
-        chain = np.loadtxt(f,skiprows=burn)
-        lnlmean.append(np.mean(chain[:,-3]))
+        if "chain_1.txt" in f:
+            pass
+        else:
+            temp = float(f.split("/")[-1].split("_")[-1][:-4])
+            beta.append(1/temp)
+            chain = np.loadtxt(f,skiprows=burn)
+            lnlmean.append(np.mean(chain[:,-3]))
     beta = np.array(beta)
     sort = np.argsort(beta)
     beta = beta[sort]
@@ -34,6 +41,8 @@ with open("chain_dir.txt",'r') as f:
 PSR_DICT_LIST = ppa.Load_All_Pulsar_Info()
 PSR_NAME_LIST = list(PSR_DICT_LIST.keys())
 PSR_DICT_LIST
+
+#PSR_NAME_LIST = PSR_NAME_LIST[14:]
 
 try:
     with open("ppa/Parfile/spa_results.json",'r') as f:
@@ -49,7 +58,7 @@ except:
 
 k = 0
 logz_all = []
-for i,psrn in enumerate(PSR_NAME_LIST[22:]):  
+for i,psrn in enumerate(PSR_NAME_LIST):  
     for subset in ["10cm","20cm"]:
         
         psr = ppa.Pulsar( PSR_DICT_LIST[ psrn ],order=2,iono=sys.argv[2],subset=subset,nfreqs_dict={"ionfr_10cm":0 , "ionfr_20cm":0,"noiono_10cm":0,"noiono_20cm":0})
@@ -80,19 +89,19 @@ for i,psrn in enumerate(PSR_NAME_LIST[22:]):
             if sys.argv[1]=="read":
                 z = z_thermo(burn=burn,outdir=outdir)
                 logz_all.append(z)
-                print(psrn,subset,"%.1f"%z)
                 del(z)
             elif sys.argv[1] == "white":
                 print(psrn,subset)
                 sampler = PTSampler(len(init),lnlike,lnprior,cov = np.diag(np.ones(len(init)))*0.01,\
-                                    resume=False,outDir=outdir,verbose=True)
-                sampler.sample(init,500000,writeHotChains=True,Tmax = Tmax)
+                                    resume=True,outDir=outdir,verbose=True)
+                sampler.sample(init,100000,writeHotChains=True,thin=400,Tmax = Tmax)
     
 #=====================================================#
 #     M + EFAC + EQUAD + Sred + Gamma                 #
 #=====================================================#
 k = 0
-for i,psrn in enumerate(PSR_NAME_LIST[22:]):  
+kk = 0
+for i,psrn in enumerate(PSR_NAME_LIST):  
     res = {}
     for subset in ["10cm","20cm"]:
         psr = ppa.Pulsar( PSR_DICT_LIST[ psrn ],order=2,iono=sys.argv[2],subset=subset,nfreqs_dict={"ionfr_10cm":30 , "ionfr_20cm":30,"noiono_10cm":30,"noiono_20cm":30})
@@ -127,7 +136,7 @@ for i,psrn in enumerate(PSR_NAME_LIST[22:]):
             if sys.argv[1]=="read":
                 z = z_thermo(burn=burn,outdir=outdir)
                 logbf = z - logz_all[k]
-                chain = np.loadtxt(outdir+"/chain_1.0.txt")
+                chain = np.loadtxt(outdir+"/chain_1.0.txt",skiprows=burn)
                 
                 med1 = np.median( chain[:,0])
                 min1 = med1 - np.quantile( chain[:,0],0.16 )
@@ -150,23 +159,24 @@ for i,psrn in enumerate(PSR_NAME_LIST[22:]):
                 spa_results[psrn].update( { sys.argv[2]+"_"+subset:(med1,med2,med3,med4,(logbf))}  )
                 
                 # corner plot
-                corner.corner(chain[:,[0,1,2,3]],labels=[r"$\log_{10}$EF" , r"$\log_{10}$EQ" , r"$\log_{10}S_{\rm red}$",r"$\Gamma$"],show_titles=True);
-                plt.suptitle(psrn+"  "+subset)
-                plt.savefig("Figures/"+psrn+"_"+sys.argv[2]+"_"+subset+".jpg")
-                plt.close()
+                #corner.corner(chain[:,[0,1,2,3]],labels=[r"$\log_{10}$EF" , r"$\log_{10}$EQ" , r"$\log_{10}S_{\rm red}$",r"$\Gamma$"],show_titles=True);
+                #plt.suptitle(psrn+"_"+sys.argv[2]+"_"+subset)
+                #plt.savefig("Figures/"+psrn+"_"+sys.argv[2]+"_"+subset+".jpg")
+                #plt.close()
 
                 # tabulation
-                
+                #print(psrn,subset,"%.1f"%z,len(chain)) 
                 if subset=="10cm":
-                    print( k+1,'&',psrn,"& %.2f"%np.log10(np.median(psr.DPA_ERR[0])),"& %.2f"%np.log10(np.std(psr.DPA[0])) ,\
+                    print( kk+1,'&',psrn,"& %.2f"%np.log10(np.median(psr.DPA_ERR[0])),"& %.2f"%np.log10(np.std(psr.DPA[0])) ,\
                     "& $%.2f^{+%.2f}_{-%.2f}$  & $% .2f^{+%.2f}_{-%.2f} $ & $ % .2f^{+%.2f}_{-%.2f}$ & $% .2f^{+%.2f}_{-%.2f}$"%(med1,max1,min1,med2,max2,min2,med3,max3,min3,med4,max4,min4),\
                      "& %.1f"%(logbf)+"\\\\" )
+                    kk+=1
                 del(z,logbf)
             elif sys.argv[1]=="red":
                 print(psrn,subset)
                 sampler = PTSampler(len(init),lnlike,lnprior,cov = np.diag(np.ones(len(init)))*0.01,\
-                                    resume=False,outDir=outdir,verbose=True)
-                sampler.sample(init,500000,writeHotChains=True,Tmax=Tmax)
+                                    resume=True,outDir=outdir,verbose=True)
+                sampler.sample(init,500000,writeHotChains=True,thin=400,Tmax=Tmax)
             k += 1
 
 if sys.argv[1]=='read':
