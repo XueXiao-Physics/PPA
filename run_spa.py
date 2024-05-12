@@ -10,7 +10,7 @@ import os
 import glob
 import sys
 
-burn = 5000
+burn = 25000
 Tmax = 10
 
 def z_thermo(burn =0,outdir = "./"):
@@ -49,8 +49,8 @@ except:
 
 k = 0
 logz_all = []
-for i,psrn in enumerate(PSR_NAME_LIST):  
-    for subset in ["10cm"]:#["10cm","20cm"]:
+for i,psrn in enumerate(PSR_NAME_LIST[22:]):  
+    for subset in ["10cm","20cm"]:
         
         psr = ppa.Pulsar( PSR_DICT_LIST[ psrn ],order=2,iono=sys.argv[2],subset=subset,nfreqs_dict={"ionfr_10cm":0 , "ionfr_20cm":0,"noiono_10cm":0,"noiono_20cm":0})
         array = ppa.Array([psr])
@@ -85,16 +85,16 @@ for i,psrn in enumerate(PSR_NAME_LIST):
             elif sys.argv[1] == "white":
                 print(psrn,subset)
                 sampler = PTSampler(len(init),lnlike,lnprior,cov = np.diag(np.ones(len(init)))*0.01,\
-                                    resume=True,outDir=outdir,verbose=True)
-                sampler.sample(init,100000,writeHotChains=True,Tmax = Tmax)
+                                    resume=False,outDir=outdir,verbose=True)
+                sampler.sample(init,500000,writeHotChains=True,Tmax = Tmax)
     
 #=====================================================#
 #     M + EFAC + EQUAD + Sred + Gamma                 #
 #=====================================================#
 k = 0
-for i,psrn in enumerate(PSR_NAME_LIST):  
+for i,psrn in enumerate(PSR_NAME_LIST[22:]):  
     res = {}
-    for subset in ["10cm"]:#["10cm","20cm"]:
+    for subset in ["10cm","20cm"]:
         psr = ppa.Pulsar( PSR_DICT_LIST[ psrn ],order=2,iono=sys.argv[2],subset=subset,nfreqs_dict={"ionfr_10cm":30 , "ionfr_20cm":30,"noiono_10cm":30,"noiono_20cm":30})
         array = ppa.Array([psr])
         if array.NPSR != 0:
@@ -148,19 +148,28 @@ for i,psrn in enumerate(PSR_NAME_LIST):
                 min4 = med4 - np.quantile( chain[:,3],0.16 )
                 max4 = np.quantile( chain[:,3],0.84 ) - med4
                 spa_results[psrn].update( { sys.argv[2]+"_"+subset:(med1,med2,med3,med4,(logbf))}  )
+                
+                # corner plot
+                corner.corner(chain[:,[0,1,2,3]],labels=[r"$\log_{10}$EF" , r"$\log_{10}$EQ" , r"$\log_{10}S_{\rm red}$",r"$\Gamma$"],show_titles=True);
+                plt.suptitle(psrn+"  "+subset)
+                plt.savefig("Figures/"+psrn+"_"+sys.argv[2]+"_"+subset+".jpg")
+                plt.close()
 
-
-                print( k+1,'&',psrn,"& %.2f"%np.log10(np.median(psr.DPA_ERR[0])),"& %.2f"%np.log10(np.std(psr.DPA[0])) ,\
-                  "& $%.2f^{+%.2f}_{-%.2f}$  & $% .2f^{+%.2f}_{-%.2f} $ & $ % .2f^{+%.2f}_{-%.2f}$ & $% .2f^{+%.2f}_{-%.2f}$"%(med1,max1,min1,med2,max2,min2,med3,max3,min3,med4,max4,min4),\
-                    "& %.1f"%(logbf)+"\\\\" )
+                # tabulation
+                
+                if subset=="10cm":
+                    print( k+1,'&',psrn,"& %.2f"%np.log10(np.median(psr.DPA_ERR[0])),"& %.2f"%np.log10(np.std(psr.DPA[0])) ,\
+                    "& $%.2f^{+%.2f}_{-%.2f}$  & $% .2f^{+%.2f}_{-%.2f} $ & $ % .2f^{+%.2f}_{-%.2f}$ & $% .2f^{+%.2f}_{-%.2f}$"%(med1,max1,min1,med2,max2,min2,med3,max3,min3,med4,max4,min4),\
+                     "& %.1f"%(logbf)+"\\\\" )
                 del(z,logbf)
             elif sys.argv[1]=="red":
                 print(psrn,subset)
                 sampler = PTSampler(len(init),lnlike,lnprior,cov = np.diag(np.ones(len(init)))*0.01,\
-                                    resume=True,outDir=outdir,verbose=True)
-                sampler.sample(init,100000,writeHotChains=True,Tmax=Tmax)
+                                    resume=False,outDir=outdir,verbose=True)
+                sampler.sample(init,500000,writeHotChains=True,Tmax=Tmax)
             k += 1
 
 if sys.argv[1]=='read':
     with open("ppa/Parfile/spa_results.json",'w') as f:
         json.dump(spa_results,f,indent=2)
+        print("ppa/Parfile/spa_results.json : spa result updated.")
