@@ -74,8 +74,9 @@ elif args.nfreqs == -1:
                 nfreqs_dict_psr.update( { key : 30 } )
             else:
                 nfreqs_dict_psr.update( { key : 0 } )
-        pulsars.append(ppa.Pulsar(PSR_DICT[psrn],order = args.order \
-                            , iono = args.iono , subset=args.subset,nfreqs_dict=nfreqs_dict_psr ))
+        pulsar = ppa.Pulsar(PSR_DICT[psrn],order = args.order \
+                            , iono = args.iono , subset=args.subset,nfreqs_dict=nfreqs_dict_psr )
+        pulsars.append(pulsar)
 
 
 
