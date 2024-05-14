@@ -3,10 +3,8 @@ import numpy as np
 from PTMCMCSampler.PTMCMCSampler import PTSampler
 import datetime
 import argparse
-try:
-    import mpi4py
-except Exception:
-    print("no mpi4py")
+from mpi4py import MPI
+
 import json
 with open("ppa/Parfile/spa_results.json",'r') as f:
     spa_results = json.load(f)
@@ -311,8 +309,11 @@ for ipsr in range(NPSR):
     groups.append(g)
 
 cov = np.diag(np.ones(len(init)))
+
+
+
 sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=True, outDir = name,verbose=True )
-sampler.sample(np.array(init),args.nsamp,thin=400,Tmax=10,writeHotChains=True)
+sampler.sample(np.array(init),args.nsamp,thin=400,Tmax=20,Tskip=5000,writeHotChains=True)
 
 
 

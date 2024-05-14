@@ -12,7 +12,7 @@ dlnprior = 0
 order = 2
 iono = "noiono"
 subset = "10cm"
-model = "aa"
+model = "af"
 nfreqs = -1
 mpi = 0
 nsamp = 5000000
@@ -37,5 +37,5 @@ def run( Range=range(0,51),ipsr=-1):
             argument = f"mpiexec -np {mpi} "+ argument
         os.system(argument + " &")
  
-run([2,3,21,26])
+run()
 #run(range(0,51),-1)

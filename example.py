@@ -8,11 +8,9 @@ import time
 
 if_mock = "False"
 
-dlnprior = 0
 order = 2
-iono = "ionfr"
+iono = "noiono"
 subset = "10cm"
-model = "ff"
 nfreqs = -1
 mpi = 15
 nsamp = 50000000
@@ -36,5 +34,10 @@ def run( Range=range(0,51),ipsr=-1  ):
         if mpi != 0:
             argument = f"mpiexec -np {mpi} "+ argument
         os.system(argument + " &")
-        
-run([42,45,47,48,49],-1)
+
+model="nn"
+mpi=20
+dlnprior=0
+run([16])
+
+
