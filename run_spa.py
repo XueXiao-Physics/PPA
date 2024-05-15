@@ -14,7 +14,7 @@ import glob
 import sys
 import corner
 
-burn = 15000
+burn = 25000
 Tmax = 10
 
 def z_thermo(burn =0,outdir = "./"):
@@ -94,7 +94,7 @@ for i,psrn in enumerate(PSR_NAME_LIST):
                 print(psrn,subset)
                 sampler = PTSampler(len(init),lnlike,lnprior,cov = np.diag(np.ones(len(init)))*0.01,\
                                     resume=True,outDir=outdir,verbose=True)
-                sampler.sample(init,100000,writeHotChains=True,thin=400,Tmax = Tmax)
+                sampler.sample(init,500000,writeHotChains=True,Tskip=2000,thin=400,Tmax = Tmax)
     
 #=====================================================#
 #     M + EFAC + EQUAD + Sred + Gamma                 #
@@ -176,7 +176,7 @@ for i,psrn in enumerate(PSR_NAME_LIST):
                 print(psrn,subset)
                 sampler = PTSampler(len(init),lnlike,lnprior,cov = np.diag(np.ones(len(init)))*0.01,\
                                     resume=True,outDir=outdir,verbose=True)
-                sampler.sample(init,500000,writeHotChains=True,thin=400,Tmax=Tmax)
+                sampler.sample(init,500000,writeHotChains=True,Tskip=2000,thin=400,Tmax=Tmax)
             k += 1
 
 if sys.argv[1]=='read':
