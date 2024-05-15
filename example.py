@@ -2,8 +2,6 @@ import numpy as np
 import sys
 import os
 import time
-#lma_idx = float(sys.argv[1])
-#dlnprior = float(sys.argv[2])
 
 
 if_mock = "False"
@@ -12,7 +10,6 @@ order = 2
 iono = "noiono"
 subset = "10cm"
 nfreqs = -1
-mpi = 15
 nsamp = 50000000
 
 def run( Range=range(0,51),ipsr=-1  ):
@@ -35,9 +32,9 @@ def run( Range=range(0,51),ipsr=-1  ):
             argument = f"mpiexec -np {mpi} "+ argument
         os.system(argument + " &")
 
-model="nn"
-mpi=20
-dlnprior=0
-run([16])
+model = "ff"
+mpi = 20
+dlnprior = 0
+run([42,45,47,48,49])
 
 
