@@ -313,7 +313,7 @@ cov = np.diag(np.ones(len(init)))
 
 
 sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=True, outDir = name,verbose=True )
-sampler.sample(np.array(init),args.nsamp,thin=400,Tmax=20,Tskip=5000,writeHotChains=True)
+sampler.sample(np.array(init),args.nsamp,thin=400,Tmax=20,Tskip=50000,writeHotChains=True)
 
 
 

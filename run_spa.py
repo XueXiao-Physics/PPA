@@ -14,7 +14,7 @@ import glob
 import sys
 import corner
 
-burn = 25000
+burn = 750
 Tmax = 10
 
 def z_thermo(burn =0,outdir = "./"):
