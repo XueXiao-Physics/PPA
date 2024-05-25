@@ -10,9 +10,7 @@ if_mock = "False"
 
 dlnprior = 0
 order = 2
-iono = "noiono"
 subset = "10cm"
-model = "aa"
 nfreqs = -1
 mpi = 0
 nsamp = 5000000
@@ -37,5 +35,10 @@ def run( Range=range(0,51),ipsr=-1):
             argument = f"mpiexec -np {mpi} "+ argument
         os.system(argument + " &")
  
+iono = "ionfr"
+model = "aa"
 run()
+model = "ff"
+run()
+
 #run(range(0,51),-1)

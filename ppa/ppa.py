@@ -95,7 +95,7 @@ def Load_All_Pulsar_Info():
 #=========================================================#
 class Pulsar():
 
-    def __init__( self, PSR_DICT , order=None , iono=None , nfreqs_dict=None , subset="all" ):
+    def __init__( self, PSR_DICT , order=None , iono=None , nfreqs_dict={}, white_noise_dict={}, subset="all" ):
         self.PSR_NAME = PSR_DICT["PSR"]
         #self.import_psr()
 
@@ -133,6 +133,7 @@ class Pulsar():
         self.RM_ERR = []
         self.WAVE_LENGTH = []
         self.IONO = []
+        self.WN = []
 
 
         for SS in self.SUBSETS:
@@ -149,16 +150,24 @@ class Pulsar():
             TOAs = ( TOAd - TREFd ) * sc.day
             TOBSs = TOAs.max() - TOAs.min()
             NOBS = len(TOAs)
-            try:
-                NFREQS = nfreqs_dict[ iono+"_"+SS ]
-            except:
-                NFREQS = 0 # meaning the dictionary didn't sepcify the needed information.
 
-            DES_MTX = self.get_design_matrix( TOAs , order = order )
+
+            if iono+"_"+SS in white_noise_dict.keys():
+                WN = white_noise_dict[ iono+"_"+SS ]
+            else:
+                WN = 1
+            
+            if iono+"_"+SS in nfreqs_dict.keys():
+                NFREQS = nfreqs_dict[ iono+"_"+SS ]
+            else:
+                NREQS = 0
+
+
             FREQS , F_RED = self.get_F_red( TOAs , nfreqs = NFREQS )
             self.F_RED.append(F_RED)
             self.FREQS.append(FREQS)
-
+            self.WN.append(WN)
+            DES_MTX = self.get_design_matrix( TOAs , order = order )
             
             self.TOBSs.append(TOBSs)
             self.TOAs.append(TOAs)
@@ -251,8 +260,8 @@ class Array():
         self.IONO = [psr.IONO for psr in Pulsars]
         self.NOBS = [ psr.NOBS for psr in Pulsars]
         self.NOBS_TOTAL = np.sum([ np.sum(NOBS) for NOBS in self.NOBS ])
+        self.WN = [psr.WN for psr in Pulsars]
         
-
         self.DTE0 = np.array([psr.DTE0 for psr in Pulsars])
         self.sDTE_LNPRIOR = [psr.DTE_LNPRIOR for psr in Pulsars]
         self.PSR_LOC = np.array( [psr.PSR_LOC for psr in Pulsars] )
@@ -490,6 +499,7 @@ class Array():
 
         np.random.seed(seed)
         l10_EFAC , l10_EQUAD , l10_S0red , Gamma  = self.Load_bestfit_params()
+       
         EFAC = 10 ** l10_EFAC
         EQUAD = 10 ** l10_EQUAD
         S0red = 10 ** l10_S0red 
@@ -589,7 +599,8 @@ class Array():
 
         FREQS_by_SS = [x for xs in self.FREQS for x in xs]
         TOBSs_by_SS = [x for xs in self.TOBSs for x in xs]
-
+        WN_by_SS    = np.array([x for xs in self.WN for x in xs])
+        print(WN_by_SS)
         NOBS_TOTAL = self.NOBS_TOTAL
         ALL_ORDERS = np.sum(ORDERS_by_SS)
         
@@ -603,7 +614,10 @@ class Array():
             ma    = 10**np.array(l10_ma).astype(float)
             Sa    = 10**np.array(l10_Sa).astype(float)
             S0red = 10**np.array(l10_S0red).astype(float)
-
+            
+            EFAC[WN_by_SS==0] = 1
+            EQUAD[WN_by_SS==0] = 1e-99
+        
             #=============================================#
             #     White Noise                             #
             #=============================================#

@@ -59,16 +59,20 @@ except:
 k = 0
 logz_all = []
 for i,psrn in enumerate(PSR_NAME_LIST):  
-    for subset in ["10cm","20cm"]:
-        
+    for subset in ["10cm","20cm"]:    
         psr = ppa.Pulsar( PSR_DICT_LIST[ psrn ],order=2,iono=sys.argv[2],subset=subset,nfreqs_dict={"ionfr_10cm":0 , "ionfr_20cm":0,"noiono_10cm":0,"noiono_20cm":0})
+        psr1= ppa.Pulsar( PSR_DICT_LIST[ psrn ],order=0,iono=sys.argv[2],subset=subset,nfreqs_dict={"ionfr_10cm":0 , "ionfr_20cm":0,"noiono_10cm":0,"noiono_20cm":0})
+        
         array = ppa.Array([psr])
+        array1 = ppa.Array([psr1])
         if array.NPSR != 0:
             _lnlike = array.Generate_Lnlike_Function(adm_signal='none')
-
+            _lnlike1= array1.Generate_Lnlike_Function(adm_signal='none')
             def lnlike(x):
                 l10_EFAC , l10_EQUAD  = np.array(x)
                 return _lnlike( [l10_EFAC] , [l10_EQUAD] , [-3.] , [0.] ,1., -22. , -8. )
+            lnlike_ref  = _lnlike( [0] , [-99] , [-3.] , [0.] ,1., -22. , -8. )
+            lnlike_ref1 = _lnlike1( [0] , [-99] , [-3.] , [0.] ,1., -22. , -8. ) 
 
             l10_EFAC_lp , l10_EFAC_sp = ppa.gen_uniform_lnprior(-2,2)
             l10_EQUAD_lp , l10_EQUAD_sp = ppa.gen_uniform_lnprior(-8,2)
@@ -89,7 +93,8 @@ for i,psrn in enumerate(PSR_NAME_LIST):
             if sys.argv[1]=="read":
                 z = z_thermo(burn=burn,outdir=outdir)
                 logz_all.append(z)
-                del(z)
+                if subset in ["10cm"]:
+                    print( psrn   , "%.1f"%(lnlike_ref - lnlike_ref1)  , "&%.1f"%(z - lnlike_ref) )
             elif sys.argv[1] == "white":
                 print(psrn,subset)
                 sampler = PTSampler(len(init),lnlike,lnprior,cov = np.diag(np.ones(len(init)))*0.01,\
@@ -108,7 +113,6 @@ for i,psrn in enumerate(PSR_NAME_LIST):
         array = ppa.Array([psr])
         if array.NPSR != 0:
             _lnlike = array.Generate_Lnlike_Function(adm_signal='none')
-
             def lnlike(x):
                 l10_EFAC , l10_EQUAD , l10_S0red  ,Gamma = np.array(x)
                 return _lnlike( [l10_EFAC] , [l10_EQUAD] , [l10_S0red] , [Gamma] ,1, -22 , -8 )

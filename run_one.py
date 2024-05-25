@@ -39,7 +39,7 @@ parser.add_argument("-mock_seed"   , action = "store" , type = int , default = "
 
 parser.add_argument("-pulsar"      , action = "store" , type = int , default="-1" )
 parser.add_argument("-iono"        , action = "store", choices=["ionfr","noiono"] , default='ionfr')
-parser.add_argument("-subset"      , action = "store", choices=["10cm","20cm","all"] , default = "all" )
+parser.add_argument("-subset"      , action = "store", choices=["10cm","20cm","all"] , default = "10cm" )
 parser.add_argument("-model"        , action = "store", choices = ["af" , "na" , "nf","aa","nn","ff"] , default = "af" )
 parser.add_argument("-nfreqs"       , action = "store", type = int , default="-1" )
 
@@ -54,28 +54,33 @@ tag_ana = f"_ana_d{args.dlnprior:.0f}_o{args.order}_r{args.nfreqs}_" + args.iono
 PSR_DICT = ppa.Load_All_Pulsar_Info()
 
 
-if args.nfreqs >=0:
-    pulsars = [ ppa.Pulsar( PSR_DICT[psrn] , order = args.order \
-                       , iono = args.iono , subset = args.subset \
-                        , nfreqs_dict={"10cm":args.nfreqs,"20cm":args.nfreqs} ) for psrn in PSR_DICT ]
+pulsars=[]
+for psrn in PSR_DICT:
+    nfreqs_dict_psr = {}
+    white_noise_dict_psr = {}
     
-
-elif args.nfreqs == -1:
-    pulsars = []
-    for psrn in PSR_DICT:
-        nfreqs_dict_psr = {}
-        for key in spa_results[psrn].keys():
-            psr_noise = spa_results[psrn][key]
+    for key in spa_results[psrn].keys():
+        psr_noise = spa_results[psrn][key]
+        if args.nfreqs==-1:
             if psr_noise[4]>2.3 and psr_noise[3]<=-3:
                 nfreqs_dict_psr.update( { key : 5 } )
             elif psr_noise[4]>2.3 and psr_noise[3]>=-3:
                 nfreqs_dict_psr.update( { key : 30 } )
             else:
                 nfreqs_dict_psr.update( { key : 0 } )
-        pulsar = ppa.Pulsar(PSR_DICT[psrn],order = args.order \
-                            , iono = args.iono , subset=args.subset,nfreqs_dict=nfreqs_dict_psr )
-        pulsars.append(pulsar)
+        else:
+            nfreqs_dict_psr.update( { key : args.nfreqs} )
 
+        #white_noise_dict_psr.update( { key : 1 } )
+        if psrn in ["J0437-4715","J0711-6830","J1017-7156","J1022+1001","J1713+0747","J1730-2304","J1744-1134","J1909-3744"]:
+            white_noise_dict_psr.update( { key : 1 } )
+        else:
+            white_noise_dict_psr.update( { key : 0 } )
+    
+    pulsar = ppa.Pulsar(PSR_DICT[psrn],order = args.order \
+                        , iono = args.iono , subset=args.subset
+                        , nfreqs_dict=nfreqs_dict_psr , white_noise_dict = white_noise_dict_psr )
+    pulsars.append(pulsar)
 
 
 PSR_NAME_LIST = [psr.PSR_NAME for psr in pulsars]
@@ -312,7 +317,7 @@ cov = np.diag(np.ones(len(init)))
 
 
 
-sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=True, outDir = name,verbose=True )
+sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=True, outDir = name,verbose=False )
 sampler.sample(np.array(init),args.nsamp,thin=400,Tmax=20,Tskip=50000,writeHotChains=True)
 
 

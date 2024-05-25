@@ -32,9 +32,9 @@ def run( Range=range(0,51),ipsr=-1  ):
             argument = f"mpiexec -np {mpi} "+ argument
         os.system(argument + " &")
 
-model = "ff"
+model = "aa"
 mpi = 20
 dlnprior = 0
-run([42,45,47,48,49])
+run([0,1,2,3])
 
 
