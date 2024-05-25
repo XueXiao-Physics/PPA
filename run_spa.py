@@ -57,6 +57,8 @@ except:
 #=====================================================#
 
 k = 0
+logbf_1 = []
+logbf_2 = []
 logz_all = []
 for i,psrn in enumerate(PSR_NAME_LIST):  
     for subset in ["10cm","20cm"]:    
@@ -93,8 +95,11 @@ for i,psrn in enumerate(PSR_NAME_LIST):
             if sys.argv[1]=="read":
                 z = z_thermo(burn=burn,outdir=outdir)
                 logz_all.append(z)
+                logbf_1.append( lnlike_ref - lnlike_ref1 )
+                logbf_2.append( z - lnlike_ref  )
                 if subset in ["10cm"]:
-                    print( psrn   , "%.1f"%(lnlike_ref - lnlike_ref1)  , "&%.1f"%(z - lnlike_ref) )
+                    print( psrn   , "%.1f"%(lnlike_ref - lnlike_ref1)  , "&%.1f"%(z - lnlike_ref) \
+                            ,"& %.2f"%np.log10(np.median(psr.DPA_ERR[0])),"& %.2f"%np.log10(np.std(psr.DPA[0])) )
             elif sys.argv[1] == "white":
                 print(psrn,subset)
                 sampler = PTSampler(len(init),lnlike,lnprior,cov = np.diag(np.ones(len(init)))*0.01,\
@@ -160,7 +165,7 @@ for i,psrn in enumerate(PSR_NAME_LIST):
                 med4 = np.median( chain[:,3])
                 min4 = med4 - np.quantile( chain[:,3],0.16 )
                 max4 = np.quantile( chain[:,3],0.84 ) - med4
-                spa_results[psrn].update( { sys.argv[2]+"_"+subset:(med1,med2,med3,med4,(logbf))}  )
+                spa_results[psrn].update( { sys.argv[2]+"_"+subset:(med1,med2,med3,med4,(logbf_1[k],logbf_2[k],logbf))}  )
                 
                 # corner plot
                 #corner.corner(chain[:,[0,1,2,3]],labels=[r"$\log_{10}$EF" , r"$\log_{10}$EQ" , r"$\log_{10}S_{\rm red}$",r"$\Gamma$"],show_titles=True);
@@ -171,9 +176,7 @@ for i,psrn in enumerate(PSR_NAME_LIST):
                 # tabulation
                 #print(psrn,subset,"%.1f"%z,len(chain)) 
                 if subset=="10cm":
-                    print( kk+1,'&',psrn,"& %.2f"%np.log10(np.median(psr.DPA_ERR[0])),"& %.2f"%np.log10(np.std(psr.DPA[0])) ,\
-                    "& $%.2f^{+%.2f}_{-%.2f}$  & $% .2f^{+%.2f}_{-%.2f} $ & $ % .2f^{+%.2f}_{-%.2f}$ & $% .2f^{+%.2f}_{-%.2f}$"%(med1,max1,min1,med2,max2,min2,med3,max3,min3,med4,max4,min4),\
-                     "& %.1f"%(logbf)+"\\\\" )
+                    print( kk+1,'&',psrn, "& $%.2f^{+%.2f}_{-%.2f}$  & $% .2f^{+%.2f}_{-%.2f} $ & $ % .2f^{+%.2f}_{-%.2f}$ & $% .2f^{+%.2f}_{-%.2f}$"%(med1,max1,min1,med2,max2,min2,med3,max3,min3,med4,max4,min4),"& %.1f"%(logbf_1[k])  , "& %.1f"%(logbf_2[k])  , "& %.1f"%(logbf)+"\\\\" )
                     kk+=1
                 del(z,logbf)
             elif sys.argv[1]=="red":

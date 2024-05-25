@@ -61,21 +61,23 @@ for psrn in PSR_DICT:
     
     for key in spa_results[psrn].keys():
         psr_noise = spa_results[psrn][key]
+        lbf1,lbf2,lbf3 = psr_noise[4]
         if args.nfreqs==-1:
-            if psr_noise[4]>2.3 and psr_noise[3]<=-3:
-                nfreqs_dict_psr.update( { key : 5 } )
-            elif psr_noise[4]>2.3 and psr_noise[3]>=-3:
-                nfreqs_dict_psr.update( { key : 30 } )
+            if lbf2 >2.3:
+                white_noise_dict_psr.update( { key : 1 } )
+                if lbf2+lbf3 > 2.3:
+                    if psr_noise[3] <= 3:
+                        nfreqs_dict_psr.update( { key : 5 } )
+                    elif psr_noise[3] > 3:
+                        nfreqs_dict_psr.update( { key : 30 } )
+                else:
+                    nfreqs_dict_psr.update( { key : 0 } )
             else:
+                white_noise_dict_psr.update( { key :  1 } )
                 nfreqs_dict_psr.update( { key : 0 } )
         else:
-            nfreqs_dict_psr.update( { key : args.nfreqs} )
-
-        #white_noise_dict_psr.update( { key : 1 } )
-        if psrn in ["J0437-4715","J0711-6830","J1017-7156","J1022+1001","J1713+0747","J1730-2304","J1744-1134","J1909-3744"]:
             white_noise_dict_psr.update( { key : 1 } )
-        else:
-            white_noise_dict_psr.update( { key : 0 } )
+            nfreqs_dict_psr.update( { key : args.nfreqs } )
     
     pulsar = ppa.Pulsar(PSR_DICT[psrn],order = args.order \
                         , iono = args.iono , subset=args.subset
