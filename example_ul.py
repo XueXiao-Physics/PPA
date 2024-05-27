@@ -37,8 +37,8 @@ def run( Range=range(0,51),ipsr=-1):
  
 iono = "ionfr"
 model = "aa"
-run()
+run(Range=range(0,21))
 model = "ff"
-run()
+run(Range=range(0,21))
 
 #run(range(0,51),-1)

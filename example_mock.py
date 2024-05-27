@@ -7,13 +7,6 @@ import time
 
 
 # Mock data properties
-if_mock = "True"
-mock_noise = "red"
-mock_adm = "none"
-mock_lma = "-23.0"
-mock_lSa = "-2.8"
-mock_seed = "50"
-
 
 # Search properties
 dlnprior = 0
@@ -33,9 +26,9 @@ def run(Range=range(0,51),ipsr=-1):
              + f"-if_mock "+if_mock\
              + f" -mock_noise "+ mock_noise\
              + f" -mock_adm " + mock_adm\
-             + f" -mock_lma " + mock_lma\
-             + f" -mock_lSa " + mock_lSa\
-             + f" -mock_seed " + mock_seed\
+             + f" -mock_lma {mock_lma}"\
+             + f" -mock_lSa {mock_lSa}"\
+             + f" -mock_seed {mock_seed}"\
              + f" -order {order}"\
              + f" -lma_min {lma_min:.2f} -lma_max {lma_max:.2f}"\
              + f" -dlnprior {dlnprior}" \
@@ -50,6 +43,16 @@ def run(Range=range(0,51),ipsr=-1):
         
         os.system(argument + " &")
 
+
+if_mock = "True"
+#mock_lma = -23.0;mock_lSa = -2.7
+mock_lma = -22.0;mock_lSa = -2.9
+#mock_lma = -21.0;mock_lSa = -2.95
+mock_seed = 50
+
+mock_noise = "red"
+mock_adm = "full"
+mpi = 0
 model = "nf"
 run()
 model = "af"

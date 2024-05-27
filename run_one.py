@@ -56,27 +56,21 @@ PSR_DICT = ppa.Load_All_Pulsar_Info()
 
 pulsars=[]
 for psrn in PSR_DICT:
-    nfreqs_dict_psr = {}
+    nfreqs_dict_psr = {}  
     white_noise_dict_psr = {}
-    
     for key in spa_results[psrn].keys():
         psr_noise = spa_results[psrn][key]
-        lbf1,lbf2,lbf3 = psr_noise[4]
-        if args.nfreqs==-1:
-            if lbf2 >2.3:
-                white_noise_dict_psr.update( { key : 1 } )
-                if lbf2+lbf3 > 2.3:
-                    if psr_noise[3] <= 3:
-                        nfreqs_dict_psr.update( { key : 5 } )
-                    elif psr_noise[3] > 3:
-                        nfreqs_dict_psr.update( { key : 30 } )
-                else:
-                    nfreqs_dict_psr.update( { key : 0 } )
+        lbf1,lbf2,lbf3,lbf4 = psr_noise[4]
+        white_noise_dict_psr.update( { key : 1 } )
+        if args.nfreqs==-1:#
+            if lbf4 > 2.3:
+                if psr_noise[3] <= -3:#
+                    nfreqs_dict_psr.update( { key : 5 } )
+                elif psr_noise[3] > -3:
+                    nfreqs_dict_psr.update( { key : 30 } )
             else:
-                white_noise_dict_psr.update( { key :  1 } )
                 nfreqs_dict_psr.update( { key : 0 } )
         else:
-            white_noise_dict_psr.update( { key : 1 } )
             nfreqs_dict_psr.update( { key : args.nfreqs } )
     
     pulsar = ppa.Pulsar(PSR_DICT[psrn],order = args.order \
@@ -106,7 +100,7 @@ if args.if_mock =="True":
     if args.mock_noise =="white":
         pulsars_mock = [ ppa.Pulsar( PSR_DICT[psrn] , order = args.order \
                        , iono = args.iono , subset = args.subset \
-                        , nfreqs_dict={"10cm":0,"20cm":0} ) for psrn in PSR_DICT ]
+                       , nfreqs_dict={"ionfr_10cm":0,"ionfr_20cm":0 , "noiono_10cm":0 , "noiono_20cm":0} ) for psrn in PSR_DICT ]
         
     elif args.mock_noise =="red":
         # for mock data we consider more red noise bins, to test the efficiency of the subtraction.
@@ -115,9 +109,10 @@ if args.if_mock =="True":
             nfreqs_dict_psr = {}
             for key in spa_results[psrn].keys():
                 psr_noise = spa_results[psrn][key]
-                if psr_noise[4]>2.3 and psr_noise[3]<=-3:
+                lbf1,lbf2,lbf3,lbf4 = psr_noise[4]
+                if lbf4 > 2.3 and psr_noise[3]<=-3:
                     nfreqs_dict_psr.update( { key : 30 } )
-                elif psr_noise[4]>2.3 and psr_noise[3]>=-3:
+                elif lbf4 > 2.3 and psr_noise[3]>=-3:
                     nfreqs_dict_psr.update( { key : 100 } )
                 else:
                     nfreqs_dict_psr.update( { key : 30 } )
@@ -140,7 +135,7 @@ if args.if_mock =="True":
         tag = "mock_"+args.mock_noise+"_se%i"%(args.mock_seed) + tag_ana
     else:
         tag = "mock_" + args.mock_noise + "_" + args.mock_adm \
-            + "_%.1f_%.1f_se%i"%(args.mock_lma,args.mock_lSa,args.mock_seed) \
+            + "_%.2f_%.2f_se%i"%(args.mock_lma,args.mock_lSa,args.mock_seed) \
                 + tag_ana
         
 elif args.if_mock == "False":

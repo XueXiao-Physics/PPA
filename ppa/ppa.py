@@ -160,7 +160,7 @@ class Pulsar():
             if iono+"_"+SS in nfreqs_dict.keys():
                 NFREQS = nfreqs_dict[ iono+"_"+SS ]
             else:
-                NREQS = 0
+                NFREQS = 0
 
 
             FREQS , F_RED = self.get_F_red( TOAs , nfreqs = NFREQS )
@@ -600,7 +600,9 @@ class Array():
         FREQS_by_SS = [x for xs in self.FREQS for x in xs]
         TOBSs_by_SS = [x for xs in self.TOBSs for x in xs]
         WN_by_SS    = np.array([x for xs in self.WN for x in xs])
-        print(WN_by_SS)
+        
+        #print(WN_by_SS)
+        #print([len(x) for x in FREQS_by_SS])
         NOBS_TOTAL = self.NOBS_TOTAL
         ALL_ORDERS = np.sum(ORDERS_by_SS)
         

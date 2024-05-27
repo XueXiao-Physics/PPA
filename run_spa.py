@@ -57,24 +57,27 @@ except:
 #=====================================================#
 
 k = 0
-logbf_1 = []
-logbf_2 = []
-logz_all = []
+logbf = []
+logz_white = []
 for i,psrn in enumerate(PSR_NAME_LIST):  
     for subset in ["10cm","20cm"]:    
         psr = ppa.Pulsar( PSR_DICT_LIST[ psrn ],order=2,iono=sys.argv[2],subset=subset,nfreqs_dict={"ionfr_10cm":0 , "ionfr_20cm":0,"noiono_10cm":0,"noiono_20cm":0})
-        psr1= ppa.Pulsar( PSR_DICT_LIST[ psrn ],order=0,iono=sys.argv[2],subset=subset,nfreqs_dict={"ionfr_10cm":0 , "ionfr_20cm":0,"noiono_10cm":0,"noiono_20cm":0})
+        psr_p0= ppa.Pulsar( PSR_DICT_LIST[ psrn ],order=0,iono=sys.argv[2],subset=subset,nfreqs_dict={"ionfr_10cm":0 , "ionfr_20cm":0,"noiono_10cm":0,"noiono_20cm":0})
+        psr_p1= ppa.Pulsar( PSR_DICT_LIST[ psrn ],order=1,iono=sys.argv[2],subset=subset,nfreqs_dict={"ionfr_10cm":0 , "ionfr_20cm":0,"noiono_10cm":0,"noiono_20cm":0})
         
         array = ppa.Array([psr])
-        array1 = ppa.Array([psr1])
+        array_p0 = ppa.Array([psr_p0])
+        array_p1 = ppa.Array([psr_p1])
         if array.NPSR != 0:
             _lnlike = array.Generate_Lnlike_Function(adm_signal='none')
-            _lnlike1= array1.Generate_Lnlike_Function(adm_signal='none')
+            _lnlike_p0= array_p0.Generate_Lnlike_Function(adm_signal='none')
+            _lnlike_p1= array_p1.Generate_Lnlike_Function(adm_signal='none')
             def lnlike(x):
                 l10_EFAC , l10_EQUAD  = np.array(x)
                 return _lnlike( [l10_EFAC] , [l10_EQUAD] , [-3.] , [0.] ,1., -22. , -8. )
-            lnlike_ref  = _lnlike( [0] , [-99] , [-3.] , [0.] ,1., -22. , -8. )
-            lnlike_ref1 = _lnlike1( [0] , [-99] , [-3.] , [0.] ,1., -22. , -8. ) 
+            lnlike_ref_p2  = _lnlike( [0] , [-99] , [-3.] , [0.] ,1., -22. , -8. )
+            lnlike_ref_p0 = _lnlike_p0( [0] , [-99] , [-3.] , [0.] ,1., -22. , -8. )
+            lnlike_ref_p1 = _lnlike_p1( [0] , [-99] , [-3.] , [0.] ,1., -22. , -8. )
 
             l10_EFAC_lp , l10_EFAC_sp = ppa.gen_uniform_lnprior(-2,2)
             l10_EQUAD_lp , l10_EQUAD_sp = ppa.gen_uniform_lnprior(-8,2)
@@ -94,11 +97,10 @@ for i,psrn in enumerate(PSR_NAME_LIST):
             outdir = predir+"/white_"+sys.argv[2]+"_"+psr.PSR_NAME+"_"+subset
             if sys.argv[1]=="read":
                 z = z_thermo(burn=burn,outdir=outdir)
-                logz_all.append(z)
-                logbf_1.append( lnlike_ref - lnlike_ref1 )
-                logbf_2.append( z - lnlike_ref  )
+                logz_white.append(z)
+                logbf.append( [ lnlike_ref_p1 - lnlike_ref_p0 , lnlike_ref_p2 - lnlike_ref_p1, z - lnlike_ref_p2 ]   )
                 if subset in ["10cm"]:
-                    print( psrn   , "%.1f"%(lnlike_ref - lnlike_ref1)  , "&%.1f"%(z - lnlike_ref) \
+                    print( psrn   ,"%.1f"%(logbf[-1][0]) , "%.1f"%(logbf[-1][1])  , "&%.1f"%(z - logbf[-1][2]) \
                             ,"& %.2f"%np.log10(np.median(psr.DPA_ERR[0])),"& %.2f"%np.log10(np.std(psr.DPA[0])) )
             elif sys.argv[1] == "white":
                 print(psrn,subset)
@@ -144,7 +146,7 @@ for i,psrn in enumerate(PSR_NAME_LIST):
             outdir = predir+"/red30_"+sys.argv[2]+"_"+psr.PSR_NAME+"_"+subset
             if sys.argv[1]=="read":
                 z = z_thermo(burn=burn,outdir=outdir)
-                logbf = z - logz_all[k]
+                logbfred = z - logz_white[k]
                 chain = np.loadtxt(outdir+"/chain_1.0.txt",skiprows=burn)
                 
                 med1 = np.median( chain[:,0])
@@ -165,7 +167,7 @@ for i,psrn in enumerate(PSR_NAME_LIST):
                 med4 = np.median( chain[:,3])
                 min4 = med4 - np.quantile( chain[:,3],0.16 )
                 max4 = np.quantile( chain[:,3],0.84 ) - med4
-                spa_results[psrn].update( { sys.argv[2]+"_"+subset:(med1,med2,med3,med4,(logbf_1[k],logbf_2[k],logbf))}  )
+                spa_results[psrn].update( { sys.argv[2]+"_"+subset:(med1,med2,med3,med4,(logbf[k][0],logbf[k][1],logbf[k][2],logbfred))}  )
                 
                 # corner plot
                 #corner.corner(chain[:,[0,1,2,3]],labels=[r"$\log_{10}$EF" , r"$\log_{10}$EQ" , r"$\log_{10}S_{\rm red}$",r"$\Gamma$"],show_titles=True);
@@ -176,9 +178,10 @@ for i,psrn in enumerate(PSR_NAME_LIST):
                 # tabulation
                 #print(psrn,subset,"%.1f"%z,len(chain)) 
                 if subset=="10cm":
-                    print( kk+1,'&',psrn, "& $%.2f^{+%.2f}_{-%.2f}$  & $% .2f^{+%.2f}_{-%.2f} $ & $ % .2f^{+%.2f}_{-%.2f}$ & $% .2f^{+%.2f}_{-%.2f}$"%(med1,max1,min1,med2,max2,min2,med3,max3,min3,med4,max4,min4),"& %.1f"%(logbf_1[k])  , "& %.1f"%(logbf_2[k])  , "& %.1f"%(logbf)+"\\\\" )
+                    print( kk+1,'&',psrn, "& $%.2f^{+%.2f}_{-%.2f}$  & $% .2f^{+%.2f}_{-%.2f} $ & $ % .2f^{+%.2f}_{-%.2f}$ & $% .2f^{+%.2f}_{-%.2f}$"%(med1,max1,min1,med2,max2,min2,med3,max3,min3,med4,max4,min4),\
+                            "& %.1f"%(logbf[k][0])  , "& %.1f"%(logbf[k][1])  ,\
+                            "& %.1f"%(logbf[k][2]) ,  "& %.1f"%(logbfred)+"\\\\" )
                     kk+=1
-                del(z,logbf)
             elif sys.argv[1]=="red":
                 print(psrn,subset)
                 sampler = PTSampler(len(init),lnlike,lnprior,cov = np.diag(np.ones(len(init)))*0.01,\
