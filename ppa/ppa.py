@@ -133,7 +133,8 @@ class Pulsar():
         self.RM_ERR = []
         self.WAVE_LENGTH = []
         self.IONO = []
-        self.WN = []
+        self.WN_IFFIX = []
+        self.WN_FIXVAL = []
 
 
         for SS in self.SUBSETS:
@@ -153,9 +154,15 @@ class Pulsar():
 
 
             if iono+"_"+SS in white_noise_dict.keys():
-                WN = white_noise_dict[ iono+"_"+SS ]
+                if white_noise_dict[ iono+"_"+SS ] == "vary":
+                    WN_IFFIX = 0
+                    WN_FIXVAL = [ np.nan , np.nan ]
+                else:
+                    WN_IFFIX = 1
+                    WN_FIXVAL = white_noise_dict[ iono+"_"+SS ]
             else:
-                WN = 1
+                WN_IFFIX = 0
+                WN_FIXVAL = [ np.nan , np.nan ]
             
             if iono+"_"+SS in nfreqs_dict.keys():
                 NFREQS = nfreqs_dict[ iono+"_"+SS ]
@@ -166,7 +173,8 @@ class Pulsar():
             FREQS , F_RED = self.get_F_red( TOAs , nfreqs = NFREQS )
             self.F_RED.append(F_RED)
             self.FREQS.append(FREQS)
-            self.WN.append(WN)
+            self.WN_IFFIX.append(WN_IFFIX)
+            self.WN_FIXVAL.append(WN_FIXVAL)
             DES_MTX = self.get_design_matrix( TOAs , order = order )
             
             self.TOBSs.append(TOBSs)
@@ -260,7 +268,8 @@ class Array():
         self.IONO = [psr.IONO for psr in Pulsars]
         self.NOBS = [ psr.NOBS for psr in Pulsars]
         self.NOBS_TOTAL = np.sum([ np.sum(NOBS) for NOBS in self.NOBS ])
-        self.WN = [psr.WN for psr in Pulsars]
+        self.WN_IFFIX = [psr.WN_IFFIX for psr in Pulsars]
+        self.WN_FIXVAL = [psr.WN_FIXVAL for psr in Pulsars]
         
         self.DTE0 = np.array([psr.DTE0 for psr in Pulsars])
         self.sDTE_LNPRIOR = [psr.DTE_LNPRIOR for psr in Pulsars]
@@ -599,26 +608,35 @@ class Array():
 
         FREQS_by_SS = [x for xs in self.FREQS for x in xs]
         TOBSs_by_SS = [x for xs in self.TOBSs for x in xs]
-        WN_by_SS    = np.array([x for xs in self.WN for x in xs])
-        
-        print(WN_by_SS)
+        WN_IFFIX_by_SS  = np.array([x for xs in self.WN_IFFIX for x in xs]).astype(bool)
+        WN_FIXVAL_by_SS = np.array([x for xs in self.WN_FIXVAL for x in xs])
+        print(WN_IFFIX_by_SS)
+        #print(WN_FIXVAL_by_SS[:,0])
+        #print(WN_FIXVAL_by_SS[:,1])
         print([len(x) for x in FREQS_by_SS])
         NOBS_TOTAL = self.NOBS_TOTAL
         ALL_ORDERS = np.sum(ORDERS_by_SS)
         
         def lnlikelihood( l10_EFAC , l10_EQUAD  ,  l10_S0red , Gamma , sDTE  , l10_ma , l10_Sa ):
+            l10_EFAC    =  np.array(l10_EFAC).astype(float)
+            l10_EQUAD   =  np.array(l10_EQUAD).astype(float)
+            l10_ma      =  np.array(l10_ma).astype(float)
+            l10_Sa      =  np.array(l10_Sa).astype(float)
+            l10_S0red   =  np.array(l10_S0red).astype(float)
+
+
+            l10_EFAC[WN_IFFIX_by_SS]  = WN_FIXVAL_by_SS[WN_IFFIX_by_SS][:,0]
+            l10_EQUAD[WN_IFFIX_by_SS] = WN_FIXVAL_by_SS[WN_IFFIX_by_SS][:,1]
 
             #=============================================#
             #     Mapping Paramaters                      #
             #=============================================#
-            EFAC  = 10**np.array(l10_EFAC).astype(float)
-            EQUAD = 10**np.array(l10_EQUAD).astype(float)
-            ma    = 10**np.array(l10_ma).astype(float)
-            Sa    = 10**np.array(l10_Sa).astype(float)
-            S0red = 10**np.array(l10_S0red).astype(float)
+            EFAC  = 10**l10_EFAC
+            EQUAD = 10**l10_EQUAD
+            ma    = 10**l10_ma
+            Sa    = 10**l10_Sa
+            S0red = 10**l10_S0red
             
-            EFAC[WN_by_SS==0] = 1
-            EQUAD[WN_by_SS==0] = 1e-99
         
             #=============================================#
             #     White Noise                             #

@@ -61,18 +61,23 @@ for psrn in PSR_DICT:
     for key in spa_results[psrn].keys():
         psr_noise = spa_results[psrn][key]
         lbf1,lbf2,lbf3,lbf4 = psr_noise[4]
-        white_noise_dict_psr.update( { key : 1 } )
+
         if args.nfreqs==-1:#
-            if lbf4 > 2.3:
-                if psr_noise[3] <= -3:#
-                    nfreqs_dict_psr.update( { key : 5 } )
-                elif psr_noise[3] > -3:
-                    nfreqs_dict_psr.update( { key : 30 } )
+            if lbf3 > 2.3:
+                white_noise_dict_psr.update( { key : "vary" } )
+                if  lbf4 > 2.3:
+                    if psr_noise[3] <= -3:#
+                        nfreqs_dict_psr.update( { key : 5 } )
+                    elif psr_noise[3] > -3:
+                        nfreqs_dict_psr.update( { key : 30 } )
+                else:
+                    nfreqs_dict_psr.update( { key : 0 } )
             else:
+                white_noise_dict_psr.update( { key : [psr_noise[0] , psr_noise[1]] } )
                 nfreqs_dict_psr.update( { key : 0 } )
         else:
             nfreqs_dict_psr.update( { key : args.nfreqs } )
-    
+            white_noise_dict_psr.update( { key : "vary" } )
     pulsar = ppa.Pulsar(PSR_DICT[psrn],order = args.order \
                         , iono = args.iono , subset=args.subset
                         , nfreqs_dict=nfreqs_dict_psr , white_noise_dict = white_noise_dict_psr )
