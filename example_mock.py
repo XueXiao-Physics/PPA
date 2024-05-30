@@ -45,15 +45,18 @@ def run(Range=range(0,51),ipsr=-1):
 
 
 if_mock = "True"
-#mock_lma = -23.0;mock_lSa = -2.7
-mock_lma = -22.0;mock_lSa = -2.9
-#mock_lma = -21.0;mock_lSa = -2.95
-mock_seed = 50
-
-mock_noise = "red"
-mock_adm = "full"
 mpi = 0
-model = "nf"
-run()
-model = "af"
-run()
+mock_noise = "red";mock_adm = "full";mock_lma = -22.0;mock_seed=20
+for i in range(1):
+    mock_lSa = -2.80  ; dlnprior = 0
+    model = "nf";run()
+    model = "af";run()
+
+
+
+#mock_noise = "red";mock_adm = "full";mock_lma = -23.0;mock_seed=20
+#for i in range(2):
+#    mock_lSa = -2.50 + i*0.05 ; dlnprior = 7
+#    model = "nf";run([0,1,2,3,4,5,6])
+#    model = "af";run([0,1,2,3,4,5,6])
+
