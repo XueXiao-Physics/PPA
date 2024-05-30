@@ -67,7 +67,7 @@ for psrn in PSR_DICT:
                 white_noise_dict_psr.update( { key : "vary" } )
                 #white_noise_dict_psr.update( { key : [psr_noise[0] , psr_noise[1]] } ) 
             else:
-                white_noise_psr.update( { key : "vary" } )
+                white_noise_dict_psr.update( { key : "vary" } )
                 
             if  lbf4 > 2.3:
                 if psr_noise[3] <= -3:#
