@@ -1,13 +1,5 @@
 import os
 os.chdir("../")
-import numpy as np
-import sys
-import time
-#lma_idx = float(sys.argv[1])
-#dlnprior = float(sys.argv[2])
-
-
-# Mock data properties
 
 # Search properties
 dlnprior = 0

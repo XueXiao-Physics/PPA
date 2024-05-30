@@ -1,11 +1,7 @@
 import os
 os.chdir("../")
-import numpy as np
-import sys
-import time
 
 if_mock = "False"
-
 order = 2
 iono = "noiono"
 subset = "10cm"

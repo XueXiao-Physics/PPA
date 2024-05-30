@@ -1,12 +1,8 @@
 import os
 os.chdir("../")
-import numpy as np
-import sys
-import time
 
 
 if_mock = "False"
-
 dlnprior = 0
 order = 0
 iono = "noiono"
@@ -31,14 +27,9 @@ def run( Range=range(0,51),ipsr=-1):
              + f" -model " + model\
              + f" -nfreqs {nfreqs}"\
              + f" -nsamp {nsamp}"\
-             +  " -pulsar " + str(ipsr)   
+             + f" -pulsar {ipsr}"   
         if mpi != 0:
             argument = f"mpiexec -np {mpi} "+ argument
         os.system(argument + " &")
 
-for ipsr in [25,26]:
-#for ipsr in [0,5,14,21,13,17,25]:
-#for ipsr in [0,5,14,21]:
-#for ipsr in [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 17, 18, 20, 21, 22, 25, 26]:
-    run(ipsr=ipsr)
-    time.sleep(500)
+run(ipsr=0)
