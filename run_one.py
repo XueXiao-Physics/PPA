@@ -65,15 +65,16 @@ for psrn in PSR_DICT:
         if args.nfreqs==-1:#
             if lbf3 > 2.3:
                 white_noise_dict_psr.update( { key : "vary" } )
-                if  lbf4 > 2.3:
-                    if psr_noise[3] <= -3:#
-                        nfreqs_dict_psr.update( { key : 5 } )
-                    elif psr_noise[3] > -3:
-                        nfreqs_dict_psr.update( { key : 30 } )
-                else:
-                    nfreqs_dict_psr.update( { key : 0 } )
+                #white_noise_dict_psr.update( { key : [psr_noise[0] , psr_noise[1]] } ) 
             else:
-                white_noise_dict_psr.update( { key : [psr_noise[0] , psr_noise[1]] } )
+                white_noise_psr.update( { key : "vary" } )
+                
+            if  lbf4 > 2.3:
+                if psr_noise[3] <= -3:#
+                    nfreqs_dict_psr.update( { key : 5 } )
+                elif psr_noise[3] > -3:
+                    nfreqs_dict_psr.update( { key : 30 } )
+            else:
                 nfreqs_dict_psr.update( { key : 0 } )
         else:
             nfreqs_dict_psr.update( { key : args.nfreqs } )
@@ -115,12 +116,13 @@ if args.if_mock =="True":
             for key in spa_results[psrn].keys():
                 psr_noise = spa_results[psrn][key]
                 lbf1,lbf2,lbf3,lbf4 = psr_noise[4]
-                if lbf4 > 2.3 and psr_noise[3]<=-3:
-                    nfreqs_dict_psr.update( { key : 30 } )
-                elif lbf4 > 2.3 and psr_noise[3]>=-3:
-                    nfreqs_dict_psr.update( { key : 100 } )
+                if lbf3 > 2.3:
+                    if lbf4 > 2.3 and psr_noise[3]<=-3:
+                        nfreqs_dict_psr.update( { key : 30 } )
+                    elif lbf4 > 2.3 and psr_noise[3]>=-3:
+                        nfreqs_dict_psr.update( { key : 100 } )
                 else:
-                    nfreqs_dict_psr.update( { key : 30 } )
+                    nfreqs_dict_psr.update( { key : 0 } )
 
             pulsars_mock.append(ppa.Pulsar(PSR_DICT[psrn],order = args.order \
                                 , iono = args.iono , subset=args.subset,nfreqs_dict=nfreqs_dict_psr ))
