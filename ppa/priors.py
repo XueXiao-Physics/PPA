@@ -45,6 +45,9 @@ def gen_DM_dist_lnprior(  ):
     return lnprior
 
 
+
+
+
 def gen_PX_dist_lnprior( PX, PXerr ):
     D0 = 1 / PX
     Derr = D0 * PXerr
@@ -102,5 +105,21 @@ def gen_uniform_lnprior( a , b ):
     return lnprior, sampler
 
 
+def gen_exp_lnprior(a,b):
 
+    norm = np.log(10) / (10**b - 10**a)
 
+    def lnprior( x ):
+        if x <= a:
+            lnp = -np.inf
+        elif x > a and x <= b:
+            lnp = x * np.log(10) + np.log(norm) 
+        elif x > b:
+            lnp = -np.inf
+        return lnp
+
+    def sampler():
+        np.random.seed()
+        return np.log10( np.random.rand()*(10**b-10**a) + 10**a )
+
+    return lnprior, sampler

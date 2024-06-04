@@ -509,7 +509,7 @@ class Array():
         np.random.seed(seed)
         l10_EFAC , l10_EQUAD , l10_S0red , Gamma  = self.Load_bestfit_params()
        
-        EFAC = 10 ** l10_EFAC
+        EFAC  = 10 ** l10_EFAC
         EQUAD = 10 ** l10_EQUAD
         S0red = 10 ** l10_S0red 
 
@@ -528,7 +528,6 @@ class Array():
 
 
     def Gen_Mock_Data( self , noise_type="red" , adm_signal="none" , mock_lma = None , mock_lSa = None , seed=10 ):
-
 
         np.random.seed(seed)
 
@@ -610,10 +609,10 @@ class Array():
         TOBSs_by_SS = [x for xs in self.TOBSs for x in xs]
         WN_IFFIX_by_SS  = np.array([x for xs in self.WN_IFFIX for x in xs]).astype(bool)
         WN_FIXVAL_by_SS = np.array([x for xs in self.WN_FIXVAL for x in xs])
-        print(WN_IFFIX_by_SS)
+        #print(WN_IFFIX_by_SS)
         #print(WN_FIXVAL_by_SS[:,0])
         #print(WN_FIXVAL_by_SS[:,1])
-        print([len(x) for x in FREQS_by_SS])
+        #print([len(x) for x in FREQS_by_SS])
         NOBS_TOTAL = self.NOBS_TOTAL
         ALL_ORDERS = np.sum(ORDERS_by_SS)
         
