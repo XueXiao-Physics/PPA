@@ -14,3 +14,7 @@
 
 # Citation
 
+# Result
+<img src="https://github.com/XueXiao-Physics/PPA/blob/main/examples/constraint_main.pdf" width="128"/>
+
+
