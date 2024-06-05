@@ -1,8 +1,9 @@
-import os
-os.chdir("../")
+import os 
+os.chdir("../") 
+import numpy as np
+# Mock data properties
 
 # Search properties
-dlnprior = 0
 order = 2
 iono = "ionfr" # even we are generating mock data, iono and subset are needed to determine TOA and error bar.
 subset = "10cm"
@@ -31,7 +32,7 @@ def run(Range=range(0,51),ipsr=-1):
              + f" -nfreqs {nfreqs}"\
              + f" -nsamp {nsamp}"\
              +  " -pulsar " + str(ipsr)   
-        if mpi != 0:
+        if mpi > 1:
             argument = f"mpiexec -np {mpi} "+ argument
         
         os.system(argument + " &")
@@ -39,17 +40,36 @@ def run(Range=range(0,51),ipsr=-1):
 
 if_mock = "True"
 mpi = 0
-mock_noise = "red";mock_adm = "full";mock_lma = -22.0;mock_seed=20
-for i in range(1):
-    mock_lSa = -2.80  ; dlnprior = 0
-    model = "nf";run()
-    model = "af";run()
+
+mock_noise = "red";mock_adm = "full";mock_lma = -21.0;
+mock_seed = 20
 
 
 
-#mock_noise = "red";mock_adm = "full";mock_lma = -23.0;mock_seed=20
-#for i in range(2):
-#    mock_lSa = -2.50 + i*0.05 ; dlnprior = 7
-#    model = "nf";run([0,1,2,3,4,5,6])
-#    model = "af";run([0,1,2,3,4,5,6])
 
+#mock_lSa = -2.00
+#dlnprior = 0
+#model = "af" ; run()
+#model = "nf" ; run()
+
+#dlnprior = 10
+#mpi = 0
+#mock_seed = 20
+#for mock_lSa in np.linspace(-3.0,-2.5,11):
+#    model = "nf";run([35])
+#    model = "af";run([35])
+
+#mpi = 0
+#mock_seed = 20
+#mock_lSa  = -2.50
+#for dlnprior in np.arange(10,45,2):
+#    model="nf";run([42])
+
+
+mpi = 15
+mock_seed = 20
+mock_lSa = -2.30
+model = "nn" ; dlnprior=0 ; run([25])
+model = "ff" ; dlnprior=0 ; run([25])
+model = "ff" ; dlnprior=0 ; run([42])
+model = "ff" ; dlnprior=0 ; run([48])
