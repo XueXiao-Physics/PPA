@@ -146,20 +146,16 @@ class Pulsar():
             TOAd = []
             idx1 = []
             idx2 = []
-            print(np.diff(TOAd1).min())
-            print(np.diff(TOAd2).min())
             i20 = 0
             for i1 in np.arange(len(TOAd1)):
                 for i2 in np.arange(i20,len(TOAd2)):
                     if np.isclose(TOAd1[i1], TOAd2[i2], atol=0.001):
-                        TOAd.append(TOAd1)
+                        TOAd.append(TOAd1[i1])
                         idx1.append(i1)
                         idx2.append(i2)
                         i20 = i2
                         break
             TOAd = np.array(TOAd)
-
-
             
             DPA = DPA[idx1]
             DPA_ERR = DPA_ERR[idx1]
