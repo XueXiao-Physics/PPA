@@ -7,6 +7,7 @@ import scipy.linalg as sl
 import json
 import os
 from copy import deepcopy
+import itertools
 module_path = os.path.dirname(__file__) + "/"
 
 
@@ -141,7 +142,25 @@ class Pulsar():
             TOAd1 , DPA , DPA_ERR = np.loadtxt( PSR_DICT["DATA"][SS] )
             TOAd2,  RM , RM_ERR = np.loadtxt( PSR_DICT["RM"][SS] )
             # Finding overlap TOA
-            TOAd , idx1 , idx2 = np.intersect1d(TOAd1,TOAd2, return_indices=True)
+
+            #TOAd , idx1 , idx2 = np.intersect1d(TOAd1,TOAd2, return_indices=True)
+            TOAd = []
+            idx1 = []
+            idx2 = []
+            print(np.diff(TOAd1).min())
+            print(np.diff(TOAd2).min())
+            i20 = 0
+            for i1 in np.arange(len(TOAd1)):
+                for i2 in np.arange(i20,len(TOAd2)):
+                    if np.isclose(TOAd1[i1], TOAd2[i2], atol=0.001):
+                        TOAd.append(TOAd1)
+                        idx1.append(i1)
+                        idx2.append(i2)
+                        i20 = i2
+                        break
+            TOAd = np.array(TOAd)
+
+
             
             DPA = DPA[idx1]
             DPA_ERR = DPA_ERR[idx1]
@@ -192,7 +211,6 @@ class Pulsar():
             else:
                 print("unknown subset:",SS)
                 raise
-
 
             if iono == "noiono":
                 self.DPA.append(DPA)
