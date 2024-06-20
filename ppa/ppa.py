@@ -7,7 +7,6 @@ import scipy.linalg as sl
 import json
 import os
 from copy import deepcopy
-import itertools
 module_path = os.path.dirname(__file__) + "/"
 
 
