@@ -105,10 +105,9 @@ for i,psrn in enumerate(PSR_NAME_LIST):
                             ,"& %.2f"%np.log10(np.median(psr_p2.DPA_ERR[0])),"& %.2f"%np.log10(np.std(psr_p2.DPA[0])) )
             
         elif sys.argv[1] == "white":
-            print(psrn,subset)
             sampler = PTSampler(len(init),lnlike,lnprior,cov = np.diag(np.ones(len(init)))*0.01,\
                                     resume=False,outDir=outdir,verbose=True)
-            sampler.sample(init,500000,writeHotChains=True,Tskip=2000,thin=400,Tmax = Tmax)
+            sampler.sample(init,1000000,writeHotChains=True,Tskip=2000,thin=400,Tmax = Tmax)
     
 #=====================================================#
 #     M + EFAC + EQUAD + Sred + Gamma                 #
@@ -117,7 +116,12 @@ k = 0
 kk = 0
 for i,psrn in enumerate(PSR_NAME_LIST):  
     res = {}
-    psr = ppa.Pulsar( PSR_DICT_LIST[ psrn ],order=2,iono=sys.argv[2],subset=sys.argv[3],nfreqs_dict={"ionfr_10cm":30 , "ionfr_20cm":30,"noiono_10cm":30,"noiono_20cm":30})
+    if psrn=="J0614-3329":
+        psr = ppa.Pulsar( PSR_DICT_LIST[ psrn ],order=2,iono=sys.argv[2],subset=sys.argv[3],\
+            nfreqs_dict={"ionfr_10cm":10 , "ionfr_20cm":10,"noiono_10cm":10,"noiono_20cm":10})
+    else:
+        psr = ppa.Pulsar( PSR_DICT_LIST[ psrn ],order=2,iono=sys.argv[2],subset=sys.argv[3],\
+            nfreqs_dict={"ionfr_10cm":30 , "ionfr_20cm":30,"noiono_10cm":30,"noiono_20cm":30})
     array = ppa.Array([psr])
     if array.NPSR != 0:
         _lnlike = array.Generate_Lnlike_Function(adm_signal='none')
@@ -141,7 +145,7 @@ for i,psrn in enumerate(PSR_NAME_LIST):
 
         init = np.array([l10_EFAC_sp() , l10_EQUAD_sp() , l10_S0red_sp() , Gamma_sp() ])
 
-        outdir = predir+"/red30_" + sys.argv[2] + "_" + psr.PSR_NAME + "_" + sys.argv[3]
+        outdir = predir+"/red_" + sys.argv[2] + "_" + psr.PSR_NAME + "_" + sys.argv[3]
         if sys.argv[1]=="read":
             z,beta = z_thermo(burn=burn,outdir=outdir)
             logbfred = z - logz_white[k]
@@ -166,10 +170,10 @@ for i,psrn in enumerate(PSR_NAME_LIST):
             spa_results[psrn].update( { sys.argv[2]+"_"+sys.argv[3]:(med1,med2,med3,med4,(logbf[k][0],logbf[k][1],logbf[k][2],logbfred))}  )
                 
             # corner plot
-            #corner.corner(chain[:,[0,1,2,3]],labels=[r"$\log_{10}$EF" , r"$\log_{10}$EQ" , r"$\log_{10}S_{\rm red}$",r"$\Gamma$"],show_titles=True);
-            #plt.suptitle(psrn+"_"+sys.argv[2]+"_"+subset)
-            #plt.savefig("Figures/"+psrn+"_"+sys.argv[2]+"_"+subset+".jpg")
-            #plt.close()
+            corner.corner(chain[:,[0,1,2,3]],smooth=0,labels=[r"$\log_{10}$EF" , r"$\log_{10}$EQ" , r"$\log_{10}S_{\rm red}$",r"$\Gamma$"],show_titles=True);
+            plt.suptitle(psrn+"_"+sys.argv[2]+"_"+sys.argv[3])
+            plt.savefig("Figures/"+psrn+"_"+sys.argv[2]+"_"+sys.argv[3]+".jpg")
+            plt.close()
 
             # tabulation
             #print(psrn,subset,"%.1f"%z,len(chain)) 
@@ -179,10 +183,9 @@ for i,psrn in enumerate(PSR_NAME_LIST):
                             "& %.1f"%(logbf[k][2]) ,  "& %.1f"%(logbfred)+"\\\\" )
             kk+=1
         elif sys.argv[1]=="red":
-            print(psrn,subset)
             sampler = PTSampler(len(init),lnlike,lnprior,cov = np.diag(np.ones(len(init)))*0.01,\
                                     resume=False,outDir=outdir,verbose=True)
-            sampler.sample(init,500000,writeHotChains=True,Tskip=2000,thin=400,Tmax=Tmax)
+            sampler.sample(init,1000000,writeHotChains=True,Tskip=2000,thin=400,Tmax=Tmax)
         k += 1
 
 if sys.argv[1]=='read':

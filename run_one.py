@@ -4,7 +4,7 @@ from PTMCMCSampler.PTMCMCSampler import PTSampler
 import datetime
 import argparse
 from mpi4py import MPI
-
+import sys
 import json
 with open("ppa/Parfile/spa_results.json",'r') as f:
     spa_results = json.load(f)
@@ -52,10 +52,17 @@ args = parser.parse_args()
 tag_ana = f"_ana_d{args.dlnprior:.0f}_o{args.order}_r{args.nfreqs}_" + args.iono  + "_" + args.subset + "_" + args.model + "_"
 
 PSR_DICT = ppa.Load_All_Pulsar_Info()
+PSR_NAMES_ALL = sorted(PSR_DICT.keys())
+if args.pulsar >= 0:
+    PSR_NAMES_SEL = [PSR_NAMES_ALL[args.pulsar]]
+    tag_ana += PSR_NAMES_ALL[args.pulsar] + '_'
+else:
+    PSR_NAMES_SEL = PSR_NAMES_ALL
+    select = np.arange(len(PSR_DICT))
 
 
 pulsars=[]
-for psrn in PSR_DICT:
+for psrn in PSR_NAMES_SEL:
     nfreqs_dict_psr = {}  
     white_noise_dict_psr = {}
     for key in spa_results[psrn].keys():
@@ -82,20 +89,17 @@ for psrn in PSR_DICT:
     pulsar = ppa.Pulsar(PSR_DICT[psrn],order = args.order \
                         , iono = args.iono , subset=args.subset
                         , nfreqs_dict=nfreqs_dict_psr , white_noise_dict = white_noise_dict_psr )
+    print(psrn,args.iono,args.subset,args.nfreqs,[len(k) for k in pulsar.FREQS])
     pulsars.append(pulsar)
 
 
 PSR_NAME_LIST = [psr.PSR_NAME for psr in pulsars]
-if args.pulsar >= 0 : 
-    pulsars = [pulsars[args.pulsar]]
-    tag_ana += pulsars[0].PSR_NAME + '_'
-elif args.pulsar == -1:
-    pulsars = pulsars
-
 array = ppa.Array(pulsars)
 NSS = np.sum( array.NSUBSETS_by_SS )
 NPSR = array.NPSR
-
+if NSS ==0:
+    print("No usable pulsar.")
+    sys.exit()
 tag_ana += f"Np{NPSR}" 
 
 
@@ -155,19 +159,11 @@ else:
 #    Construct the array                              #
 #=====================================================#
 
-
-
-
-print(tag)
-
-
 ones = np.ones(array.NPSR)
 zeros = np.zeros(array.NPSR)
 model_mapper = {"n":"none" , "a":"auto" , "f":"full"}
 lnlike_sig0_raw = array.Generate_Lnlike_Function( model_mapper[args.model[0]] )
 lnlike_sig1_raw = array.Generate_Lnlike_Function( model_mapper[args.model[1]] )
-
-#print(tag)
 
 
 #=====================================================#
@@ -301,7 +297,7 @@ name = predir + tag +  f"/bin_{args.lma_min:.2f}_{args.lma_max:.2f}"
 #    Run the sampler                                  #
 #=====================================================#
 init = get_init()
-print( lnlike(init))
+#print( lnlike(init))
 
 groups = [np.arange(len(init)) , [0, 4*NSS+NPSR+1 , 4*NSS+NPSR + 2  ]]
 
@@ -321,9 +317,10 @@ cov = np.diag(np.ones(len(init)))
 
 
 
-sampler = PTSampler( len(init) ,lnlike,lnprior,groups=groups,cov = cov,resume=True, outDir = name,verbose=False )
-sampler.sample(np.array(init),args.nsamp,thin=400,Tmax=20,Tskip=50000,writeHotChains=True)
-
+sampler = PTSampler( len(init) ,lnlike,lnprior,\
+        groups=groups,cov = cov,resume=False, outDir = name,verbose=False )
+sampler.sample(np.array(init),args.nsamp,\
+        thin=400,Tmax=20,Tskip=50000,writeHotChains=True)
 
 
 
