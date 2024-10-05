@@ -15,35 +15,67 @@ with open("ppa/Parfile/spa_results.json",'r') as f:
 #    Read the argument                                #
 #=====================================================#
 
-parser = argparse.ArgumentParser(
-    prog = "PPA",
-    description="Run Bayesian Analysis of PPA"
-)
-# For search
-parser.add_argument("-lma_min"  , action="store" ,   type = float , default="-23.6"  )
-parser.add_argument("-lma_max"  , action="store" ,   type = float , default="-18.5" )
-parser.add_argument("-order"    , action="store",    type = int , default="2" )
-parser.add_argument("-dlnprior" , action = "store" , type = float , default="0" )
-parser.add_argument("-nsamp"    , action = "store" , type = int , default = 5000000)
+parser = argparse.ArgumentParser(description="Run one simulation with specified parameters.")
 
-# for mock data
-parser.add_argument("-if_mock"    , action = "store", choices=["True","False"] , default="False")
-parser.add_argument("-mock_noise" , action = "store", choices=["white","red"]  , default="red") 
-parser.add_argument("-mock_adm"   , action = "store", choices=["none","auto","full"] , default="none")
+# Argument for minimum log mass
+parser.add_argument("-lma_min", action="store", type=float, default="-23.6",
+                    help="Minimum log mass (default: -23.6)")
 
-parser.add_argument("-mock_lma"    , action = "store" , type = float , default = "-22.0"  )
-parser.add_argument("-mock_lSa"    , action = "store" , type = float , default = "-2.5" )
-parser.add_argument("-mock_seed"   , action = "store" , type = int , default = "10" )
+# Argument for maximum log mass
+parser.add_argument("-lma_max", action="store", type=float, default="-18.5",
+                    help="Maximum log mass (default: -18.5)")
 
+# Argument for the order of the pulsar
+parser.add_argument("-order", action="store", type=int, default="2",
+                    help="Order of the pulsar (default: 2)")
 
+# Argument for the delta log prior
+parser.add_argument("-dlnprior", action="store", type=float, default="0",
+                    help="Delta log prior (default: 0)")
 
-parser.add_argument("-pulsar"      , action = "store" , type = int , default="-1" )
-parser.add_argument("-iono"        , action = "store", choices=["ionfr","noiono"] , default='ionfr')
-parser.add_argument("-subset"      , action = "store", choices=["10cm","20cm","all"] , default = "10cm" )
-parser.add_argument("-model"       , action = "store", choices = ["af" , "na" , "nf","aa","nn","ff"] , default = "af" )
-parser.add_argument("-nfreqs"      , action = "store", type = int , default="-1" )
-parser.add_argument("-white"       , action = "store", choices=["vary" , "bestfit" , "none"] , default="vary")
+# Argument for the number of samples
+parser.add_argument("-nsamp", action="store", type=int, default=5000000,
+                    help="Number of samples (default: 5000000)")
 
+# Arguments for mock data
+parser.add_argument("-if_mock", action="store", choices=["True", "False"], default="False",
+                    help="Flag to indicate if mock data should be used (default: False)")
+
+parser.add_argument("-mock_noise", action="store", choices=["white", "red"], default="red",
+                    help="Type of noise for mock data (default: red)")
+
+parser.add_argument("-mock_adm", action="store", choices=["none", "auto", "full"], default="none",
+                    help="Type of mock admittance (default: none)")
+
+parser.add_argument("-mock_lma", action="store", type=float, default="-22.0",
+                    help="Log mass for mock data (default: -22.0)")
+
+parser.add_argument("-mock_lSa", action="store", type=float, default="-2.5",
+                    help="Log Sa for mock data (default: -2.5)")
+
+parser.add_argument("-mock_seed", action="store", type=int, default="10",
+                    help="Seed for mock data generation (default: 10)")
+
+# Arguments for pulsar data
+parser.add_argument("-pulsar", action="store", type=int, default="-1",
+                    help="Pulsar index (default: -1)")
+
+parser.add_argument("-iono", action="store", choices=["ionfr", "noiono"], default='ionfr',
+                    help="Ionospheric correction option (default: ionfr)")
+
+parser.add_argument("-subset", action="store", choices=["10cm", "20cm", "all"], default="10cm",
+                    help="Data subset to use (default: 10cm)")
+
+parser.add_argument("-model", action="store", choices=["af", "na", "nf", "aa", "nn", "ff"], default="af",
+                    help="Model type (default: af)")
+
+parser.add_argument("-nfreqs", action="store", type=int, default="-1",
+                    help="Number of frequencies (default: -1)")
+
+parser.add_argument("-white", action="store", choices=["vary", "bestfit", "none"], default="vary",
+                    help="White noise option (default: vary)")
+
+# Parse the arguments
 args = parser.parse_args()
 
 #=====================================================#
