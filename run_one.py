@@ -40,8 +40,9 @@ parser.add_argument("-mock_seed"   , action = "store" , type = int , default = "
 parser.add_argument("-pulsar"      , action = "store" , type = int , default="-1" )
 parser.add_argument("-iono"        , action = "store", choices=["ionfr","noiono"] , default='ionfr')
 parser.add_argument("-subset"      , action = "store", choices=["10cm","20cm","all"] , default = "10cm" )
-parser.add_argument("-model"        , action = "store", choices = ["af" , "na" , "nf","aa","nn","ff"] , default = "af" )
-parser.add_argument("-nfreqs"       , action = "store", type = int , default="-1" )
+parser.add_argument("-model"       , action = "store", choices = ["af" , "na" , "nf","aa","nn","ff"] , default = "af" )
+parser.add_argument("-nfreqs"      , action = "store", type = int , default="-1" )
+parser.add_argument("-white"       , action = "store", choices=["vary" , "bestfit" , "none"] , default="vary")
 
 args = parser.parse_args()
 
@@ -49,7 +50,7 @@ args = parser.parse_args()
 #    Load the pulsars                                 #
 #=====================================================#
 
-tag_ana = f"_ana_d{args.dlnprior:.0f}_o{args.order}_r{args.nfreqs}_" + args.iono  + "_" + args.subset + "_" + args.model + "_"
+tag_ana = f"_ana_d{args.dlnprior:.0f}_o{args.order}_w{args.white}_r{args.nfreqs}_" + args.iono  + "_" + args.subset + "_" + args.model + "_"
 
 PSR_DICT = ppa.Load_All_Pulsar_Info()
 PSR_NAMES_ALL = sorted(PSR_DICT.keys())
@@ -68,14 +69,15 @@ for psrn in PSR_NAMES_SEL:
     for key in spa_results[psrn].keys():
         psr_noise = spa_results[psrn][key]
         lbf1,lbf2,lbf3,lbf4 = psr_noise[4]
+        
+        if args.white == "vary":
+            white_noise_dict_psr.update( { key : "vary" } )
+        elif args.white == "bestfit":
+            white_noise_dict_psr.update( { key : [ psr_noise[0] , psr_noise[1] ] } )
+        elif args.white == "none":
+            white_noise_dict_psr.update( { key : [ 0 , -99 ] } ) 
 
         if args.nfreqs==-1:#
-            if lbf3 > 2.3:
-                white_noise_dict_psr.update( { key : "vary" } )
-                #white_noise_dict_psr.update( { key : [psr_noise[0] , psr_noise[1]] } ) 
-            else:
-                white_noise_dict_psr.update( { key : "vary" } )
-                
             if  lbf4 > 2.3:
                 if psr_noise[3] <= -3:#
                     nfreqs_dict_psr.update( { key : 5 } )
@@ -85,11 +87,10 @@ for psrn in PSR_NAMES_SEL:
                 nfreqs_dict_psr.update( { key : 0 } )
         else:
             nfreqs_dict_psr.update( { key : args.nfreqs } )
-            white_noise_dict_psr.update( { key : "vary" } )
     pulsar = ppa.Pulsar(PSR_DICT[psrn],order = args.order \
                         , iono = args.iono , subset=args.subset
                         , nfreqs_dict=nfreqs_dict_psr , white_noise_dict = white_noise_dict_psr )
-    print(psrn,args.iono,args.subset,args.nfreqs,[len(k) for k in pulsar.FREQS])
+    print(psrn,args.iono,args.subset,args.white,args.nfreqs,[len(k) for k in pulsar.FREQS])
     pulsars.append(pulsar)
 
 
@@ -318,7 +319,7 @@ cov = np.diag(np.ones(len(init)))
 
 
 sampler = PTSampler( len(init) ,lnlike,lnprior,\
-        groups=groups,cov = cov,resume=False, outDir = name,verbose=False )
+        groups=groups,cov = cov,resume=False, outDir = name,verbose=True )
 sampler.sample(np.array(init),args.nsamp,\
         thin=400,Tmax=20,Tskip=50000,writeHotChains=True)
 
