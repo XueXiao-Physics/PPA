@@ -242,6 +242,11 @@ class Pulsar():
             raise
   
 
+    def get_F_any(self , TOAs , freq):
+        F_red = np.zeros( ( 2 , len(TOAs)) ) 
+        F_red[0] = np.cos( 2 * np.pi * freq * TOAs )
+        F_red[1] = np.sin( 2 * np.pi * freq * TOAs )
+        return F_red
 
     def get_F_red(self , TOAs , nfreqs = 0):
         
@@ -252,8 +257,7 @@ class Pulsar():
             #print(TOBSs , freqs)
             if nfreqs > 0:
                 for i in range( nfreqs ):
-                    F_red[2*i,:]   = np.cos( 2 * np.pi * freqs[i] * TOAs )
-                    F_red[2*i+1,:] = np.sin( 2 * np.pi * freqs[i] * TOAs )
+                    F_red[2*i : 2*i+2] = self.get_F_any(TOAs , freqs[i])
             return freqs , F_red
         
         else:
