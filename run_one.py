@@ -121,7 +121,7 @@ for psrn in PSR_NAMES_SEL:
             nfreqs_dict_psr.update( { key : args.nfreqs } )
     pulsar = ppa.Pulsar(PSR_DICT[psrn],order = args.order \
                         , iono = args.iono , subset=args.subset
-                        , nfreqs_dict=nfreqs_dict_psr , white_noise_dict = white_noise_dict_psr )
+                        , nfreqs_dict = nfreqs_dict_psr , white_noise_dict = white_noise_dict_psr )
     print(psrn,args.iono,args.subset,args.white,args.nfreqs,[len(k) for k in pulsar.FREQS])
     pulsars.append(pulsar)
 
@@ -153,11 +153,10 @@ if args.if_mock =="True":
             for key in spa_results[psrn].keys():
                 psr_noise = spa_results[psrn][key]
                 lbf1,lbf2,lbf3,lbf4 = psr_noise[4]
-                if lbf3 > 2.3:
-                    if lbf4 > 2.3 and psr_noise[3]<=-3:
-                        nfreqs_dict_psr.update( { key : 30 } )
-                    elif lbf4 > 2.3 and psr_noise[3]>=-3:
-                        nfreqs_dict_psr.update( { key : 100 } )
+                if lbf4 > 2.3 and psr_noise[3]<=-3:
+                    nfreqs_dict_psr.update( { key : 30 } )
+                elif lbf4 > 2.3 and psr_noise[3]>=-3:
+                    nfreqs_dict_psr.update( { key : 100 } )
                 else:
                     nfreqs_dict_psr.update( { key : 0 } )
 
