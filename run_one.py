@@ -175,7 +175,7 @@ if args.if_mock =="True":
     array.DPA = array_mock.Gen_Mock_Data( noise_type=args.mock_noise , adm_signal=args.mock_adm \
                                      ,mock_lma=args.mock_lma ,mock_lSa=args.mock_lSa  , seed=args.mock_seed)
     if args.mock_adm =="none":
-        tag = "mock_"+args.mock_noise+"_se%i"%(args.mock_seed) + tag_ana
+        tag = "mock_"+args.mock_noise+"_se%04d"%(args.mock_seed) + tag_ana
     else:
         tag = "mock_" + args.mock_noise + "_" + args.mock_adm \
             + "_%.2f_%.2f_se%i"%(args.mock_lma,args.mock_lSa,args.mock_seed) \
@@ -350,7 +350,7 @@ cov = np.diag(np.ones(len(init)))
 
 
 sampler = PTSampler( len(init) ,lnlike,lnprior,\
-        groups=groups,cov = cov,resume=False, outDir = name,verbose=True )
+        groups=groups,cov = cov,resume = True, outDir = name,verbose=True )
 sampler.sample(np.array(init),args.nsamp,\
         thin=400,Tmax=20,Tskip=50000,writeHotChains=True)
 

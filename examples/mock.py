@@ -41,35 +41,25 @@ def run(Range=range(0,51),ipsr=-1):
 if_mock = "True"
 mpi = 0
 
-mock_noise = "red";mock_adm = "full";mock_lma = -21.0;
-mock_seed = 20
 
 
+mock_noise = "red" ; mock_adm = "full" ; mock_lma = -20.0;
+mock_seed = 121;
+
+mock_lSa = -2.8
+dlnprior = 0
+model = "nf" ; run()
+model = "af" ; run()
 
 
-#mock_lSa = -2.00
-#dlnprior = 0
-#model = "af" ; run()
-#model = "nf" ; run()
+"""
+mock_noise = "red" ; mock_adm = "none" ; mock_lma = -23.0;
+mock_seed = 120;
 
-#dlnprior = 10
-#mpi = 0
-#mock_seed = 20
-#for mock_lSa in np.linspace(-3.0,-2.5,11):
-#    model = "nf";run([35])
-#    model = "af";run([35])
+mock_lSa = -2.8
+dlnprior = 0
+mpi = 0
+#model = "af" ;run()
+#model = "nf" ;run()
+"""
 
-#mpi = 0
-#mock_seed = 20
-#mock_lSa  = -2.50
-#for dlnprior in np.arange(10,45,2):
-#    model="nf";run([42])
-
-
-mpi = 15
-mock_seed = 20
-mock_lSa = -2.30
-model = "nn" ; dlnprior=0 ; run([25])
-model = "ff" ; dlnprior=0 ; run([25])
-model = "ff" ; dlnprior=0 ; run([42])
-model = "ff" ; dlnprior=0 ; run([48])

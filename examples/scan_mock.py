@@ -1,22 +1,16 @@
 import os 
 os.chdir("../") 
 import numpy as np
-# Mock data properties
 
 # Search properties
 order = 2
 iono = "ionfr" # even we are generating mock data, iono and subset are needed to determine TOA and error bar.
 subset = "10cm"
 nfreqs = -1
-mpi = 0
-nsamp = 5000000
+nsamp = 800000
 
-def run(Range=range(0,51),ipsr=-1):
-    for lma_idx in Range:
-        lma_mid = -23.50 + float(lma_idx)*0.1
-        lma_min = lma_mid-0.05
-        lma_max = lma_mid+0.05
-        argument = "python run_one.py "\
+def scanrun(lma_min,lma_max,ipsr=-1):
+    argument = "python run_one.py "\
              + f"-if_mock "+if_mock\
              + f" -mock_noise "+ mock_noise\
              + f" -mock_adm " + mock_adm\
@@ -32,44 +26,23 @@ def run(Range=range(0,51),ipsr=-1):
              + f" -nfreqs {nfreqs}"\
              + f" -nsamp {nsamp}"\
              +  " -pulsar " + str(ipsr)   
-        if mpi > 1:
+    if mpi > 1:
             argument = f"mpiexec -np {mpi} "+ argument
         
-        os.system(argument + " &")
-
+    os.system(argument + " &")
 
 if_mock = "True"
 mpi = 0
 
-mock_noise = "red";mock_adm = "full";mock_lma = -21.0;
-mock_seed = 20
+mock_noise = "red";mock_adm = "none";mock_lma = -21.5;
+
+mock_lSa = np.log10( 0.3/180 * np.pi )
+dlnprior = 0
+allseed = np.arange(0,100)
+
+
+for mock_seed in allseed:
+    model = "af" ; scanrun(lma_min=-21.65,lma_max=-21.35)
 
 
 
-
-#mock_lSa = -2.00
-#dlnprior = 0
-#model = "af" ; run()
-#model = "nf" ; run()
-
-#dlnprior = 10
-#mpi = 0
-#mock_seed = 20
-#for mock_lSa in np.linspace(-3.0,-2.5,11):
-#    model = "nf";run([35])
-#    model = "af";run([35])
-
-#mpi = 0
-#mock_seed = 20
-#mock_lSa  = -2.50
-#for dlnprior in np.arange(10,45,2):
-#    model="nf";run([42])
-
-
-mpi = 15
-mock_seed = 20
-mock_lSa = -2.30
-model = "nn" ; dlnprior=0 ; run([25])
-model = "ff" ; dlnprior=0 ; run([25])
-model = "ff" ; dlnprior=0 ; run([42])
-model = "ff" ; dlnprior=0 ; run([48])
