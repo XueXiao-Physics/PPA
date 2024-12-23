@@ -13,6 +13,12 @@
 | Results|examples/Results.ipynb|Pre-derived Results collected from the MCMC chains|
 
 # Citation
+@article{xue2024first,
+  title={First Pulsar Polarization Array Limits on Ultralight Axion-like Dark Matter},
+  author={Xue, Xiao and Dai, Shi and Luu, Hoang Nhan and Liu, Tao and Ren, Jing and Shu, Jing and Zhao, Yue and Zic, Andrew and Bhat, ND and Chen, Zu-Cheng and others},
+  journal={arXiv preprint arXiv:2412.02229},
+  year={2024}
+}
 
 # Result
 <img src="https://github.com/XueXiao-Physics/PPA/blob/main/examples/constraint_main.png" width="800"/>
