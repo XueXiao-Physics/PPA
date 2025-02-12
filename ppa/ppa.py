@@ -95,7 +95,7 @@ def Load_All_Pulsar_Info():
 #=========================================================#
 class Pulsar():
 
-    def __init__( self, PSR_DICT , order=None , iono=None , nfreqs_dict={}, white_noise_dict={}, subset="all" ):
+    def __init__( self, PSR_DICT , det_order=None , iono=None , nfreqs_dict={}, white_noise_dict={}, subset="all" ):
         self.PSR_NAME = PSR_DICT["PSR"]
         #self.import_psr()
 
@@ -179,7 +179,9 @@ class Pulsar():
                 WN_FIXVAL = [ np.nan , np.nan ]
             
             if iono+"_"+SS in nfreqs_dict.keys():
-                NFREQS = nfreqs_dict[ iono+"_"+SS ]
+                NFREQS = min( nfreqs_dict[ iono+"_"+SS ] , (NOBS-2)//2 )
+                if NFREQS != nfreqs_dict[ iono+"_"+SS ] :
+                    print("iono+\"_\"+SS : the red noise frequency bins exceeds (NOBS-2)//2. The frequencies reduced from %i to %i."%(nfreqs_dict[ iono+"_"+SS ] , (NOBS-2)//2) )
             else:
                 NFREQS = 0
 
@@ -189,7 +191,7 @@ class Pulsar():
             self.FREQS.append(FREQS)
             self.WN_IFFIX.append(WN_IFFIX)
             self.WN_FIXVAL.append(WN_FIXVAL)
-            DES_MTX = self.get_design_matrix( TOAs , order = order )
+            DES_MTX = self.get_design_matrix( TOAs , det_order = det_order )
             
             self.TOBSs.append(TOBSs)
             self.TOAs.append(TOAs)
@@ -221,9 +223,9 @@ class Pulsar():
 
 
     
-    def get_design_matrix( self , TOAs , order = 2 ):
+    def get_design_matrix( self , TOAs , det_order = 2 ):
 
-        if order in [ 0 , 1 , 2 ]:
+        if det_order in [ 0 , 1 , 2 ]:
 
             TOAs_mid = ( TOAs.max() + TOAs.min() ) / 2
             TOBSs = TOAs.max() - TOAs.min() 
@@ -235,10 +237,10 @@ class Pulsar():
 
             DES_MTX = np.array( [vec1 , vec2 , vec3] )     
             
-            return DES_MTX[:order+1,:]
+            return DES_MTX[:det_order+1,:]
         
         else:
-            print("ISM marginalizasion order: 0, 1 or 2")
+            print("ISM marginalizasion det_order: 0, 1 or 2")
             raise
   
 
