@@ -32,4 +32,11 @@ This code is written in python, which also requires numpy, matplotlib, scipy pac
 # Result
 <img src="https://github.com/XueXiao-Physics/PPA/blob/main/examples/constraint_main.png" width="800"/>
 
+# Imporant Note
+1. All angular measurements in the code are expressed in radians, not degrees.
+2. Before running the code, it is recommended to set the environment variable for OpenMP to use a single thread. You can do this by executing the following command in your terminal:
+   ```
+   export OMP_NUM_THREADS=1
+   ```
+   
 
