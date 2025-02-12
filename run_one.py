@@ -25,9 +25,9 @@ parser.add_argument("-lma_min", action="store", type=float, default="-23.6",
 parser.add_argument("-lma_max", action="store", type=float, default="-18.5",
                     help="Maximum log mass (default: -18.5)")
 
-# Argument for the order of the pulsar
-parser.add_argument("-order", action="store", type=int, default="2",
-                    help="Order of the pulsar (default: 2)")
+# Argument for the det_order of the pulsar
+parser.add_argument("-det_order", action="store", type=int, default="2",
+                    help="det_order of the pulsar (default: 2)")
 
 # Argument for the delta log prior
 parser.add_argument("-dlnprior", action="store", type=float, default="0",
@@ -82,7 +82,7 @@ args = parser.parse_args()
 #    Load the pulsars                                 #
 #=====================================================#
 
-tag_ana = f"_ana_d{args.dlnprior:.0f}_o{args.order}_w{args.white}_r{args.nfreqs}_" + args.iono  + "_" + args.subset + "_" + args.model + "_"
+tag_ana = f"_ana_d{args.dlnprior:.0f}_o{args.det_order}_w{args.white}_r{args.nfreqs}_" + args.iono  + "_" + args.subset + "_" + args.model + "_"
 
 PSR_DICT = ppa.Load_All_Pulsar_Info()
 PSR_NAMES_ALL = sorted(PSR_DICT.keys())
@@ -119,7 +119,7 @@ for psrn in PSR_NAMES_SEL:
                 nfreqs_dict_psr.update( { key : 0 } )
         else:
             nfreqs_dict_psr.update( { key : args.nfreqs } )
-    pulsar = ppa.Pulsar(PSR_DICT[psrn],order = args.order \
+    pulsar = ppa.Pulsar(PSR_DICT[psrn],det_order = args.det_order \
                         , iono = args.iono , subset=args.subset
                         , nfreqs_dict = nfreqs_dict_psr , white_noise_dict = white_noise_dict_psr )
     print(psrn,args.iono,args.subset,args.white,args.nfreqs,[len(k) for k in pulsar.FREQS])
@@ -141,7 +141,7 @@ tag_ana += f"Np{NPSR}"
 #=====================================================#
 if args.if_mock =="True":
     if args.mock_noise =="white":
-        pulsars_mock = [ ppa.Pulsar( PSR_DICT[psrn] , order = args.order \
+        pulsars_mock = [ ppa.Pulsar( PSR_DICT[psrn] , det_order = args.det_order \
                        , iono = args.iono , subset = args.subset \
                        , nfreqs_dict={"ionfr_10cm":0,"ionfr_20cm":0 , "noiono_10cm":0 , "noiono_20cm":0} ) for psrn in PSR_DICT ]
         
@@ -160,7 +160,7 @@ if args.if_mock =="True":
                 else:
                     nfreqs_dict_psr.update( { key : 0 } )
 
-            pulsars_mock.append(ppa.Pulsar(PSR_DICT[psrn],order = args.order \
+            pulsars_mock.append(ppa.Pulsar(PSR_DICT[psrn],det_order = args.det_order \
                                 , iono = args.iono , subset=args.subset,nfreqs_dict=nfreqs_dict_psr ))
 
     PSR_NAME_LIST = [psr.PSR_NAME for psr in pulsars_mock]
@@ -352,7 +352,7 @@ cov = np.diag(np.ones(len(init)))
 sampler = PTSampler( len(init) ,lnlike,lnprior,\
         groups=groups,cov = cov,resume = True, outDir = name,verbose=True )
 sampler.sample(np.array(init),args.nsamp,\
-        thin=400,Tmax=20,Tskip=50000,writeHotChains=True)
+        thin=1000,Tmax=20,Tskip=50000,writeHotChains=True)
 
 
 

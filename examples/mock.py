@@ -4,7 +4,7 @@ import numpy as np
 # Mock data properties
 
 # Search properties
-order = 2
+det_order = 2
 iono = "ionfr" # even we are generating mock data, iono and subset are needed to determine TOA and error bar.
 subset = "10cm"
 nfreqs = -1
@@ -23,7 +23,7 @@ def run(Range=range(0,51),ipsr=-1):
              + f" -mock_lma {mock_lma}"\
              + f" -mock_lSa {mock_lSa}"\
              + f" -mock_seed {mock_seed}"\
-             + f" -order {order}"\
+             + f" -det_order {det_order}"\
              + f" -lma_min {lma_min:.2f} -lma_max {lma_max:.2f}"\
              + f" -dlnprior {dlnprior}" \
              + f" -iono " + iono\

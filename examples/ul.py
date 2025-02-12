@@ -5,7 +5,7 @@ os.chdir("../")
 if_mock = "False"
 
 dlnprior = 0
-order = 2
+det_order = 2
 subset = "10cm"
 nfreqs = -1
 mpi = 0
@@ -18,7 +18,7 @@ def run( Range=range(0,51),ipsr=-1):
         lma_max = lma_mid+0.05
         argument = "python run_one.py "\
              + f" -if_mock "+if_mock\
-             + f" -order {order}"\
+             + f" -det_order {det_order}"\
              + f" -lma_min {lma_min:.2f} -lma_max {lma_max:.2f}"\
              + f" -dlnprior {dlnprior}"\
              + f" -iono " + iono\
