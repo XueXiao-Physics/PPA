@@ -102,6 +102,10 @@ for i,psrn in enumerate(PSR_NAME_LIST):
 #=====================================================#
 k = 0
 kk = 0
+string = sys.argv[1]+"_"+sys.argv[2]+" output"
+print(len(string)*"*")
+print(string)
+print(len(string)*"*")
 
 print("index & pulsar & log10EF & log10EQ/rad & log10Sr/rad & Gamma & logBF (0,1)/(0) & logBF (0,1,2)/(0,1) & logBF (0,1,2,w)/(0,1,2) & logBF (0,1,2,w,r)/(0,1,2,w)\\\\")
 for i,psrn in enumerate(PSR_NAME_LIST):  
