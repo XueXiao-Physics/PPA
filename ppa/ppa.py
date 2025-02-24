@@ -604,9 +604,6 @@ class Array():
             for p in range(self.NPSR):
                 for ss in range(self.NSUBSETS_by_SS[p]):
                     DPA[p][ss] += Fmock[2*p : 2*p+2]@F_adm[p][ss]
-                p+=2
-
-
 
         return DPA
 
