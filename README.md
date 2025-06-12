@@ -30,7 +30,7 @@ This code is written in python, which also requires numpy, matplotlib, scipy pac
 }
 
 # Result
-<img src="https://github.com/XueXiao-Physics/PPA/blob/main/examples/constraint_main.png" width="800"/>
+<img src="https://github.com/XueXiao-Physics/PPA/blob/main/Figures/constraint_main.png" width="800"/>
 
 # Imporant Note
 1. All angular measurements in the code are expressed in radians, not degrees.
