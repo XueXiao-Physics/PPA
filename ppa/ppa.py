@@ -479,7 +479,7 @@ class Array():
             for ss in range( self.NSUBSETS_by_SS[p] ):
                 NOBS = self.NOBS[p][ss]
                 t = self.TOAs[p][ss] 
-                if external_TOA: # June 2025
+                if type(external_TOA)==np.array: # June 2025
                     t = external_TOA
                 if adm_signal in ["auto","full"]:
                     F_ADM_ss = np.zeros((2,NOBS))
@@ -541,13 +541,12 @@ class Array():
             DPA_P = []
             for S in range(self.NSUBSETS_by_SS[P]):
                 NOBS = self.NOBS[P][S]
-                if external_TOA: # June 2025
+                if type(external_TOA)==np.array: # June 2025
                     NOBS = len(external_TOA)
                 DPA_ERR = np.sqrt(self.DPA_ERR[P][S]**2 * EFAC[iSS]**2 + EQUAD[iSS]**2)
                 DPA_S = np.random.normal( size = NOBS ) * DPA_ERR
                 iSS += 1
                 DPA_P.append(DPA_S)
-            print(DPA_S)
             DPA[P] =  np.array(DPA_P ) 
         
         return DPA
@@ -583,7 +582,6 @@ class Array():
                     Phi_red_ss = np.diag(1/np.array(Phi_inv_red[p][ss]))
                     if Phi_red_ss.size >0:
                         Fmock = np.random.multivariate_normal(np.zeros(len(Phi_red_ss)),Phi_red_ss)
-                        print(Fmock)
                         DPA[p][ss] += Fmock @ F_red[p][ss] 
                     else:
                         pass
