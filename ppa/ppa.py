@@ -591,19 +591,21 @@ class Array():
         
 
         # here we add noise
-        if noise_type == 'white':
-            pass
-        elif noise_type == "red":
-            for p in range(self.NPSR):
-                for ss in range(self.NSUBSETS_by_SS[p]):
-                    Phi_red_ss = np.diag(1/np.array(Phi_inv_red[p][ss]))
-                    if Phi_red_ss.size >0:
-                        Fmock = np.random.multivariate_normal(np.zeros(len(Phi_red_ss)),Phi_red_ss)
-                        DPA[p][ss] += Fmock @ F_red[p][ss] 
-                    else:
+        for p in range(self.NPSR):
+            for ss in range(self.NSUBSETS_by_SS[p]):
+                Phi_red_ss = np.diag(1/np.array(Phi_inv_red[p][ss]))
+                if Phi_red_ss.size >0:
+                    Fmock = np.random.multivariate_normal(np.zeros(len(Phi_red_ss)),Phi_red_ss)
+                    if noise_type== 'white':
                         pass
-        else:
-            raise
+                    elif noise_type=="red":
+                        DPA[p][ss] += Fmock @ F_red[p][ss] 
+                else:
+                    pass
+
+                if noise_type =="none":
+                    DPA[p][ss] *= 0
+
 
         
         # here we add axion signal
