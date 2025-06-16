@@ -251,6 +251,17 @@ class Pulsar():
         F_red[1] = np.sin( 2 * np.pi * freq * TOAs )
         return F_red
 
+
+    def get_F_red_fixfreq(self , TOAs, freqs): # June 2025, for mock data
+        if len(freqs)>0:
+            F_red = np.zeros( ( len(freqs)*2 , len(TOAs)) ) 
+            for i in range( len(freqs) ):
+                F_red[2*i : 2*i+2] = self.get_F_any(TOAs , freqs[i])
+            return F_red
+        else:
+            return np.empty((0,len(TOAs)))
+
+
     def get_F_red(self , TOAs , nfreqs = 0):
         
         if nfreqs > 0 and type(nfreqs)==int :
@@ -258,13 +269,14 @@ class Pulsar():
             TOBSs = TOAs.max() - TOAs.min() 
             freqs = 1 / TOBSs * np.arange(1,1+nfreqs)
             #print(TOBSs , freqs)
-            if nfreqs > 0:
-                for i in range( nfreqs ):
-                    F_red[2*i : 2*i+2] = self.get_F_any(TOAs , freqs[i])
+            for i in range( nfreqs ):
+                F_red[2*i : 2*i+2] = self.get_F_any(TOAs , freqs[i])
             return freqs , F_red
         
         else:
             return np.array([]),np.empty((0,len(TOAs)))
+        
+
 
 
 
@@ -280,6 +292,7 @@ class Array():
 
         # elimate all pulsars that have no data
         Pulsars = [ P for P in Pulsars if len(P.SUBSETS) ]
+        self.Pulsars = Pulsars
 
         # Rearrange subsets
         self.PSR_NAMES = [ psr.PSR_NAME for psr in Pulsars ]
@@ -479,7 +492,8 @@ class Array():
             for ss in range( self.NSUBSETS_by_SS[p] ):
                 NOBS = self.NOBS[p][ss]
                 t = self.TOAs[p][ss] 
-                if type(external_TOA)==np.array: # June 2025
+                if type(external_TOA) in [list,np.ndarray,np.array]: # June 2025
+                    NOBS = len(external_TOA)
                     t = external_TOA
                 if adm_signal in ["auto","full"]:
                     F_ADM_ss = np.zeros((2,NOBS))
@@ -533,7 +547,6 @@ class Array():
        
         EFAC  = 10 ** l10_EFAC
         EQUAD = 10 ** l10_EQUAD
-        S0red = 10 ** l10_S0red 
 
         iSS = 0
         DPA = np.zeros(self.NPSR,dtype="object")
@@ -541,9 +554,10 @@ class Array():
             DPA_P = []
             for S in range(self.NSUBSETS_by_SS[P]):
                 NOBS = self.NOBS[P][S]
-                if type(external_TOA)==np.array: # June 2025
-                    NOBS = len(external_TOA)
                 DPA_ERR = np.sqrt(self.DPA_ERR[P][S]**2 * EFAC[iSS]**2 + EQUAD[iSS]**2)
+                if type(external_TOA) in [list,np.ndarray,np.array]: # June 2025
+                    NOBS = len(external_TOA)
+                    DPA_ERR = np.mean(DPA_ERR)
                 DPA_S = np.random.normal( size = NOBS ) * DPA_ERR
                 iSS += 1
                 DPA_P.append(DPA_S)
@@ -558,7 +572,7 @@ class Array():
 
         # Generate white noise first
         l10_EFAC , l10_EQUAD , l10_S0red , Gamma  = self.Load_bestfit_params()
-        DPA = self.Gen_White_Mock_Data(seed=seed)
+        DPA = self.Gen_White_Mock_Data(seed=seed, external_TOA=external_TOA)
 
 
         S0red = 10**l10_S0red
@@ -571,6 +585,9 @@ class Array():
         Phi_inv_red = self.Get_Phi_inv_red(Sred2)[0]
         
         F_red = self.F_RED
+        if type(external_TOA) in [list,np.ndarray,np.array]:
+            F_red = [[p.get_F_red_fixfreq(external_TOA,F) for F in p.FREQS] for p in self.Pulsars]
+            pass
         
 
         # here we add noise
