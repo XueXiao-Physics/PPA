@@ -179,6 +179,7 @@ class Pulsar():
                 WN_FIXVAL = [ np.nan , np.nan ]
             
             if iono+"_"+SS in nfreqs_dict.keys():
+                #NFREQS = nfreqs_dict[ iono+"_"+SS ]
                 NFREQS = min( nfreqs_dict[ iono+"_"+SS ] , (NOBS-2)//2 )
                 if NFREQS != nfreqs_dict[ iono+"_"+SS ] :
                     print("iono+\"_\"+SS : the red noise frequency bins exceeds (NOBS-2)//2. The frequencies reduced from %i to %i."%(nfreqs_dict[ iono+"_"+SS ] , (NOBS-2)//2) )
@@ -469,7 +470,7 @@ class Array():
     #    F for axion                                      #
     #=====================================================#
 
-    def Get_F_ADM(self,ma ,adm_signal):
+    def Get_F_ADM(self,ma ,adm_signal,external_TOA = False):
 
         omega = ma * sc.eV/sc.hbar
         F_ADM = []
@@ -478,6 +479,8 @@ class Array():
             for ss in range( self.NSUBSETS_by_SS[p] ):
                 NOBS = self.NOBS[p][ss]
                 t = self.TOAs[p][ss] 
+                if external_TOA: # June 2025
+                    t = external_TOA
                 if adm_signal in ["auto","full"]:
                     F_ADM_ss = np.zeros((2,NOBS))
                     F_ADM_ss[ 0 ] = np.cos(omega * t.astype(np.float64))
@@ -523,7 +526,7 @@ class Array():
     #=====================================================#
     #    Mock Data Module                                 #
     #=====================================================#
-    def Gen_White_Mock_Data( self , seed=10):
+    def Gen_White_Mock_Data( self , seed=10 , external_TOA = False):
 
         np.random.seed(seed)
         l10_EFAC , l10_EQUAD , l10_S0red , Gamma  = self.Load_bestfit_params()
@@ -537,16 +540,20 @@ class Array():
         for P in range( self.NPSR ):
             DPA_P = []
             for S in range(self.NSUBSETS_by_SS[P]):
+                NOBS = self.NOBS[P][S]
+                if external_TOA: # June 2025
+                    NOBS = len(external_TOA)
                 DPA_ERR = np.sqrt(self.DPA_ERR[P][S]**2 * EFAC[iSS]**2 + EQUAD[iSS]**2)
-                DPA_S = np.random.normal( size = self.NOBS[P][S] ) * DPA_ERR
+                DPA_S = np.random.normal( size = NOBS ) * DPA_ERR
                 iSS += 1
                 DPA_P.append(DPA_S)
+            print(DPA_S)
             DPA[P] =  np.array(DPA_P ) 
         
         return DPA
 
 
-    def Gen_Mock_Data( self , noise_type="red" , adm_signal="none" , mock_lma = None , mock_lSa = None , seed=10 ):
+    def Gen_Mock_Data( self , noise_type="red" , adm_signal="none" , mock_lma = None , mock_lSa = None , seed=10, external_TOA = False ):
 
         np.random.seed(seed)
 
@@ -576,6 +583,7 @@ class Array():
                     Phi_red_ss = np.diag(1/np.array(Phi_inv_red[p][ss]))
                     if Phi_red_ss.size >0:
                         Fmock = np.random.multivariate_normal(np.zeros(len(Phi_red_ss)),Phi_red_ss)
+                        print(Fmock)
                         DPA[p][ss] += Fmock @ F_red[p][ss] 
                     else:
                         pass
@@ -590,7 +598,7 @@ class Array():
         elif adm_signal in ["full","auto"]:
             ma = 10**mock_lma
             Sa = 10**mock_lSa
-            F_adm = self.Get_F_ADM(ma,adm_signal )[0]
+            F_adm = self.Get_F_ADM(ma,adm_signal ,external_TOA=external_TOA)[0] # June 2025
             Phi_adm = self.Get_Phi_ADM(1e-3,ma , np.ones(22) , Sa**2)
             if adm_signal == "auto":
                 Phi_adm = np.diag(np.diag(Phi_adm))
