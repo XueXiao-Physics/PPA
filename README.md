@@ -5,7 +5,6 @@ This github repository contains the data and code needed to reproduce the main r
 [Pulsar Polarization Array Limits on Ultralight Axionlike Dark Matter](https://journals.aps.org/prl/abstract/10.1103/mptv-3x6g)
 [Phys.Rev.Lett. 136 (2026) 1, 011001](https://journals.aps.org/prl/abstract/10.1103/mptv-3x6g)
 
-[First Pulsar Polarization Array Limits on Ultralight Axion-like Dark Matter](https://arxiv.org/abs/2412.02229)
 [arXiv:2412.02229](https://arxiv.org/abs/2412.02229)
 
 This code is written in python, which also requires numpy, matplotlib, scipy package and jupyter notebook. 
@@ -25,11 +24,19 @@ This code is written in python, which also requires numpy, matplotlib, scipy pac
 | Results|examples/Results.ipynb|Pre-derived Results collected from the MCMC chains|
 
 # Citation
-@article{xue2024first,
-  title={First Pulsar Polarization Array Limits on Ultralight Axion-like Dark Matter},
-  author={Xue, Xiao and Dai, Shi and Luu, Hoang Nhan and Liu, Tao and Ren, Jing and Shu, Jing and Zhao, Yue and Zic, Andrew and Bhat, ND and Chen, Zu-Cheng and others},
-  journal={arXiv preprint arXiv:2412.02229},
-  year={2024}
+@article{PPTA:2024mgh,
+    author = "Xue, Xiao and others",
+    collaboration = "PPTA",
+    title = "{Pulsar Polarization Array Limits on Ultralight Axionlike Dark Matter}",
+    eprint = "2412.02229",
+    archivePrefix = "arXiv",
+    primaryClass = "astro-ph.HE",
+    doi = "10.1103/mptv-3x6g",
+    journal = "Phys. Rev. Lett.",
+    volume = "136",
+    number = "1",
+    pages = "011001",
+    year = "2026"
 }
 
 # Result
