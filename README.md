@@ -1,6 +1,8 @@
 # First Pulsar Polarization Array Limits on Ultralight Axion-like Dark Matter
 
 This github repository contains the data and code needed to reproduce the main results of the paper:
+[Pulsar Polarization Array Limits on Ultralight Axionlike Dark Matter](https://journals.aps.org/prl/abstract/10.1103/mptv-3x6g)
+[Phys.Rev.Lett. 136 (2026) 1, 011001](https://journals.aps.org/prl/abstract/10.1103/mptv-3x6g)
 
 [First Pulsar Polarization Array Limits on Ultralight Axion-like Dark Matter](https://arxiv.org/abs/2412.02229)
 [arXiv:2412.02229](https://arxiv.org/abs/2412.02229)
